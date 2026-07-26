@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wellness Check-in</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e293b">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wellness">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="config.js"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    margin: 0;
+    padding: 16px;
+    padding-bottom: 48px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .card {
+    background: #1e293b;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  label { display: block; margin: 14px 0 6px; font-size: 14px; color: #cbd5e1; }
+  input[type=text], input[type=email], input[type=password], input[type=number], textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #f1f5f9;
+    font-size: 16px;
+  }
+  input[type=range] { width: 100%; height: 36px; accent-color: #38bdf8; }
+  .range-value { text-align: right; font-size: 20px; font-weight: 600; color: #38bdf8; }
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #38bdf8;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 16px;
+    cursor: pointer;
+  }
+  button.secondary { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+  button.tab { background: #334155; color: #cbd5e1; margin-top: 0; }
+  button.tab.active { background: #38bdf8; color: #0f172a; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button { flex: 1; }
+  .hidden { display: none !important; }
+  .msg { font-size: 14px; padding: 10px; border-radius: 8px; margin-top: 10px; }
+  .msg.error { background: #7f1d1d; color: #fecaca; }
+  .msg.ok { background: #14532d; color: #bbf7d0; }
+  .toplink { text-align: center; margin-top: 12px; font-size: 14px; color: #94a3b8; }
+  .toplink a { color: #38bdf8; cursor: pointer; }
+  .row-between { display: flex; justify-content: space-between; align-items: center; }
+  canvas { max-height: 220px; }
+  .entry { padding: 8px 0; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-section" class="card">
+  <h1>Wellness Check-in</h1>
+  <div id="login-form">
+    <label>Email</label>
+    <input type="email" id="login-email" placeholder="tvuj@email.cz">
+    <label>Heslo</label>
+    <input type="password" id="login-password">
+    <button onclick="login()">Přihlásit se</button>
+    <div class="toplink">Nemáš účet? <a onclick="showRegister()">Zaregistruj se</a></div>
+  </div>
+
+  <div id="register-form" class="hidden">
+    <label>Jméno a příjmení</label>
+    <input type="text" id="reg-name" placeholder="Jan Novák">
+    <label>Email</label>
+    <input type="email" id="reg-email" placeholder="tvuj@email.cz">
+    <label>Heslo</label>
+    <input type="password" id="reg-password" placeholder="alespoň 6 znaků">
+    <button onclick="register()">Vytvořit účet</button>
+    <div class="toplink">Už máš účet? <a onclick="showLogin()">Přihlásit se</a></div>
+  </div>
+
+  <div id="auth-msg"></div>
+</div>
+
+<!-- APP -->
+<div id="app-section" class="hidden">
+  <div class="card row-between">
+    <div>
+      <h1 style="margin-bottom:2px" id="welcome-name">Ahoj</h1>
+      <div style="font-size:13px;color:#94a3b8">dnešní check-in</div>
+    </div>
+    <button class="secondary" style="width:auto;margin-top:0" onclick="logout()">Odhlásit</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-daily" onclick="switchTab('daily')">Denní wellness</button>
+    <button class="tab" id="tab-training" onclick="switchTab('training')">Po tréninku (RPE)</button>
+  </div>
+
+  <!-- DAILY FORM -->
+  <div class="card" id="daily-form">
+    <label>Kvalita spánku <span class="range-value" id="v-sleep">5</span></label>
+    <input type="range" min="1" max="10" value="5" id="sleep_quality" oninput="updateVal('sleep_quality','v-sleep')">
+
+    <label>Bolestivost svalů <span class="range-value" id="v-soreness">5</span></label>
+    <input type="range" min="1" max="10" value="5" id="soreness" oninput="updateVal('soreness','v-soreness')">
+
+    <label>Nálada <span class="range-value" id="v-mood">5</span></label>
+    <input type="range" min="1" max="10" value="5" id="mood" oninput="updateVal('mood','v-mood')">
+
+    <label>Stres <span class="range-value" id="v-stress">5</span></label>
+    <input type="range" min="1" max="10" value="5" id="stress" oninput="updateVal('stress','v-stress')">
+
+    <label>Celková připravenost (readiness) <span class="range-value" id="v-readiness">5</span></label>
+    <input type="range" min="1" max="10" value="5" id="readiness" oninput="updateVal('readiness','v-readiness')">
+
+    <button onclick="submitDaily()">Odeslat denní wellness</button>
+  </div>
+
+  <!-- TRAINING FORM -->
+  <div class="card hidden" id="training-form">
+    <label>RPE (jak náročný byl trénink) <span class="range-value" id="v-rpe">5</span></label>
+    <input type="range" min="1" max="10" value="5" id="rpe" oninput="updateVal('rpe','v-rpe')">
+
+    <label>Délka tréninku (minuty)</label>
+    <input type="number" id="duration_min" placeholder="60">
+
+    <label>Poznámka (nepovinné)</label>
+    <textarea id="notes" rows="3" placeholder="co jsi trénoval, jak ses cítil..."></textarea>
+
+    <button onclick="submitTraining()">Odeslat záznam tréninku</button>
+  </div>
+
+  <div id="submit-msg"></div>
+
+  <div class="card">
+    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">Tvůj trend - posledních 30 dní</div>
+    <canvas id="historyChart"></canvas>
+  </div>
+
+  <div class="card" id="history-list"></div>
+</div>
+
+<script>
+let currentUser = null;
+
+function showRegister() {
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('register-form').classList.remove('hidden');
+  document.getElementById('auth-msg').innerHTML = '';
+}
+function showLogin() {
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('auth-msg').innerHTML = '';
+}
+function showAuthMsg(text, ok) {
+  document.getElementById('auth-msg').innerHTML =
+    `<div class="msg ${ok ? 'ok' : 'error'}">${text}</div>`;
+}
+function showSubmitMsg(text, ok) {
+  document.getElementById('submit-msg').innerHTML =
+    `<div class="msg ${ok ? 'ok' : 'error'}">${text}</div>`;
+  setTimeout(() => document.getElementById('submit-msg').innerHTML = '', 3000);
+}
+
+async function register() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!name || !email || password.length < 6) {
+    showAuthMsg('Vyplň jméno, email a heslo (min. 6 znaků).', false);
+    return;
+  }
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) { showAuthMsg(error.message, false); return; }
+
+  if (data.user) {
+    await supabaseClient.from('profiles').insert({
+      id: data.user.id, full_name: name, role: 'client'
+    });
+  }
+  showAuthMsg('Účet vytvořen! Pokud vidíš výzvu k potvrzení emailu, potvrď ho a pak se přihlas.', true);
+  showLogin();
+}
+
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { showAuthMsg(error.message, false); return; }
+  await loadApp();
+}
+
+async function logout() {
+  await supabaseClient.auth.signOut();
+  document.getElementById('app-section').classList.add('hidden');
+  document.getElementById('auth-section').classList.remove('hidden');
+}
+
+function updateVal(inputId, spanId) {
+  document.getElementById(spanId).textContent = document.getElementById(inputId).value;
+}
+
+function switchTab(tab) {
+  document.getElementById('daily-form').classList.toggle('hidden', tab !== 'daily');
+  document.getElementById('training-form').classList.toggle('hidden', tab !== 'training');
+  document.getElementById('tab-daily').classList.toggle('active', tab === 'daily');
+  document.getElementById('tab-training').classList.toggle('active', tab === 'training');
+}
+
+async function submitDaily() {
+  const payload = {
+    user_id: currentUser.id,
+    type: 'daily',
+    sleep_quality: +document.getElementById('sleep_quality').value,
+    soreness: +document.getElementById('soreness').value,
+    mood: +document.getElementById('mood').value,
+    stress: +document.getElementById('stress').value,
+    readiness: +document.getElementById('readiness').value,
+  };
+  const { error } = await supabaseClient.from('checkins').insert(payload);
+  if (error) { showSubmitMsg(error.message, false); return; }
+  showSubmitMsg('Uloženo, díky!', true);
+  loadHistory();
+}
+
+async function submitTraining() {
+  const payload = {
+    user_id: currentUser.id,
+    type: 'training',
+    rpe: +document.getElementById('rpe').value,
+    duration_min: document.getElementById('duration_min').value ? +document.getElementById('duration_min').value : null,
+    notes: document.getElementById('notes').value.trim() || null,
+  };
+  const { error } = await supabaseClient.from('checkins').insert(payload);
+  if (error) { showSubmitMsg(error.message, false); return; }
+  showSubmitMsg('Uloženo, díky!', true);
+  document.getElementById('duration_min').value = '';
+  document.getElementById('notes').value = '';
+  loadHistory();
+}
+
+let chartInstance = null;
+async function loadHistory() {
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  const { data, error } = await supabaseClient
+    .from('checkins')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (error) return;
+
+  const labels = data.map(d => new Date(d.created_at).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }));
+  const readiness = data.map(d => d.readiness);
+  const rpe = data.map(d => d.rpe);
+
+  const ctx = document.getElementById('historyChart');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Readiness', data: readiness, borderColor: '#38bdf8', spanGaps: true, tension: 0.3 },
+        { label: 'RPE', data: rpe, borderColor: '#f87171', spanGaps: true, tension: 0.3 },
+      ]
+    },
+    options: {
+      scales: { y: { min: 0, max: 10, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
+      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+    }
+  });
+
+  const list = data.slice().reverse().slice(0, 10).map(d => {
+    const date = new Date(d.created_at).toLocaleDateString('cs-CZ');
+    if (d.type === 'daily') {
+      return `<div class="entry">${date} · Denní · readiness ${d.readiness}, spánek ${d.sleep_quality}, nálada ${d.mood}</div>`;
+    }
+    return `<div class="entry">${date} · Trénink · RPE ${d.rpe}${d.duration_min ? ', ' + d.duration_min + ' min' : ''}</div>`;
+  }).join('');
+  document.getElementById('history-list').innerHTML = list || '<div class="entry">Zatím žádné záznamy.</div>';
+}
+
+async function loadApp() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  currentUser = user;
+
+  const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', user.id).single();
+  document.getElementById('welcome-name').textContent = 'Ahoj, ' + (profile?.full_name || '');
+
+  document.getElementById('auth-section').classList.add('hidden');
+  document.getElementById('app-section').classList.remove('hidden');
+  loadHistory();
+}
+
+// při načtení stránky zkontroluj, jestli už je uživatel přihlášený
+(async () => {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) await loadApp();
+})();
+
+// registrace service workera pro instalaci na plochu
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>

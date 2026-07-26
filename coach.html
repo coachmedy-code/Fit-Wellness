@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kouč dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="config.js"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    margin: 0;
+    padding: 16px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .card { background: #1e293b; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  label { display: block; margin: 14px 0 6px; font-size: 14px; color: #cbd5e1; }
+  input[type=email], input[type=password] {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155;
+    background: #0f172a; color: #f1f5f9; font-size: 16px;
+  }
+  button {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    background: #38bdf8; color: #0f172a; font-size: 16px; font-weight: 600;
+    margin-top: 16px; cursor: pointer;
+  }
+  button.secondary { background: transparent; color: #94a3b8; border: 1px solid #334155; margin-top: 0; width: auto; }
+  .hidden { display: none !important; }
+  .msg { font-size: 14px; padding: 10px; border-radius: 8px; margin-top: 10px; }
+  .msg.error { background: #7f1d1d; color: #fecaca; }
+  .row-between { display: flex; justify-content: space-between; align-items: center; }
+  .client-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 4px; border-bottom: 1px solid #334155; cursor: pointer;
+  }
+  .client-item:last-child { border-bottom: none; }
+  .badge { font-size: 12px; color: #94a3b8; }
+  canvas { max-height: 220px; margin-bottom: 24px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat { background: #0f172a; border-radius: 10px; padding: 10px; text-align: center; }
+  .stat .num { font-size: 22px; font-weight: 700; color: #38bdf8; }
+  .stat .label { font-size: 11px; color: #94a3b8; }
+  .entry { padding: 8px 0; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-section" class="card">
+  <h1>Kouč — přihlášení</h1>
+  <label>Email</label>
+  <input type="email" id="login-email">
+  <label>Heslo</label>
+  <input type="password" id="login-password">
+  <button onclick="login()">Přihlásit se</button>
+  <div id="login-msg"></div>
+</div>
+
+<!-- CLIENT LIST -->
+<div id="list-section" class="hidden">
+  <div class="card row-between">
+    <h1 style="margin:0">Klienti</h1>
+    <button class="secondary" onclick="logout()">Odhlásit</button>
+  </div>
+  <div class="card" id="client-list"></div>
+</div>
+
+<!-- CLIENT DETAIL -->
+<div id="detail-section" class="hidden">
+  <div class="card row-between">
+    <h1 style="margin:0" id="detail-name"></h1>
+    <button class="secondary" onclick="backToList()">← Zpět</button>
+  </div>
+
+  <div class="card">
+    <div class="stat-grid" id="stat-grid"></div>
+    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">Wellness trend (30 dní)</div>
+    <canvas id="wellnessChart"></canvas>
+    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">RPE trend (30 dní)</div>
+    <canvas id="rpeChart"></canvas>
+  </div>
+
+  <div class="card">
+    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">Poslední záznamy</div>
+    <div id="entries-list"></div>
+  </div>
+</div>
+
+<script>
+let wellnessChartInstance = null;
+let rpeChartInstance = null;
+
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    document.getElementById('login-msg').innerHTML = `<div class="msg error">${error.message}</div>`;
+    return;
+  }
+  const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();
+  if (!profile || profile.role !== 'coach') {
+    document.getElementById('login-msg').innerHTML = `<div class="msg error">Tento účet nemá práva kouče.</div>`;
+    await supabaseClient.auth.signOut();
+    return;
+  }
+  document.getElementById('login-section').classList.add('hidden');
+  document.getElementById('list-section').classList.remove('hidden');
+  loadClients();
+}
+
+async function logout() {
+  await supabaseClient.auth.signOut();
+  document.getElementById('list-section').classList.add('hidden');
+  document.getElementById('detail-section').classList.add('hidden');
+  document.getElementById('login-section').classList.remove('hidden');
+}
+
+async function loadClients() {
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id, full_name')
+    .eq('role', 'client')
+    .order('full_name', { ascending: true });
+
+  if (error) {
+    document.getElementById('client-list').innerHTML = `<div class="msg error">${error.message}</div>`;
+    return;
+  }
+
+  document.getElementById('client-list').innerHTML = data.map(c =>
+    `<div class="client-item" onclick="openClient('${c.id}','${c.full_name.replace(/'/g, "\\'")}')">
+       <span>${c.full_name}</span><span class="badge">›</span>
+     </div>`
+  ).join('') || '<div class="entry">Zatím žádní klienti.</div>';
+}
+
+function backToList() {
+  document.getElementById('detail-section').classList.add('hidden');
+  document.getElementById('list-section').classList.remove('hidden');
+}
+
+async function openClient(id, name) {
+  document.getElementById('list-section').classList.add('hidden');
+  document.getElementById('detail-section').classList.remove('hidden');
+  document.getElementById('detail-name').textContent = name;
+
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  const { data, error } = await supabaseClient
+    .from('checkins')
+    .select('*')
+    .eq('user_id', id)
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (error) return;
+
+  const daily = data.filter(d => d.type === 'daily');
+  const training = data.filter(d => d.type === 'training');
+
+  const avg = arr => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '–';
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat"><div class="num">${avg(daily.map(d => d.readiness).filter(v => v != null))}</div><div class="label">⌀ readiness</div></div>
+    <div class="stat"><div class="num">${avg(training.map(d => d.rpe).filter(v => v != null))}</div><div class="label">⌀ RPE</div></div>
+    <div class="stat"><div class="num">${data.length}</div><div class="label">záznamů (30d)</div></div>
+  `;
+
+  const labels = daily.map(d => new Date(d.created_at).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }));
+  const wctx = document.getElementById('wellnessChart');
+  if (wellnessChartInstance) wellnessChartInstance.destroy();
+  wellnessChartInstance = new Chart(wctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Readiness', data: daily.map(d => d.readiness), borderColor: '#38bdf8', tension: 0.3 },
+        { label: 'Spánek', data: daily.map(d => d.sleep_quality), borderColor: '#a78bfa', tension: 0.3 },
+        { label: 'Nálada', data: daily.map(d => d.mood), borderColor: '#34d399', tension: 0.3 },
+        { label: 'Bolestivost', data: daily.map(d => d.soreness), borderColor: '#fbbf24', tension: 0.3 },
+      ]
+    },
+    options: {
+      scales: { y: { min: 0, max: 10, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
+      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+    }
+  });
+
+  const rpeLabels = training.map(d => new Date(d.created_at).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }));
+  const rctx = document.getElementById('rpeChart');
+  if (rpeChartInstance) rpeChartInstance.destroy();
+  rpeChartInstance = new Chart(rctx, {
+    type: 'line',
+    data: {
+      labels: rpeLabels,
+      datasets: [{ label: 'RPE', data: training.map(d => d.rpe), borderColor: '#f87171', tension: 0.3 }]
+    },
+    options: {
+      scales: { y: { min: 0, max: 10, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
+      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+    }
+  });
+
+  const list = data.slice().reverse().slice(0, 15).map(d => {
+    const date = new Date(d.created_at).toLocaleDateString('cs-CZ');
+    if (d.type === 'daily') {
+      return `<div class="entry">${date} · Denní · readiness ${d.readiness}, spánek ${d.sleep_quality}, bolest ${d.soreness}, nálada ${d.mood}, stres ${d.stress}</div>`;
+    }
+    return `<div class="entry">${date} · Trénink · RPE ${d.rpe}${d.duration_min ? ', ' + d.duration_min + ' min' : ''}${d.notes ? ' — ' + d.notes : ''}</div>`;
+  }).join('');
+  document.getElementById('entries-list').innerHTML = list || '<div class="entry">Zatím žádné záznamy.</div>';
+}
+
+// pokud je kouč už přihlášený, přeskoč rovnou na seznam
+(async () => {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) return;
+  const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
+  if (profile && profile.role === 'coach') {
+    document.getElementById('login-section').classList.add('hidden');
+    document.getElementById('list-section').classList.remove('hidden');
+    loadClients();
+  }
+})();
+</script>
+</body>
+</html>
