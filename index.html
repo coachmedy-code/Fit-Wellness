@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>Wellness</title>
 
-<link rel="manifest" href="manifest.json" id="app-manifest-link">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0f0d">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -320,30 +320,6 @@ function deriveEmail(token) {
   return `client-${token}@wellness.internal`;
 }
 
-function setupDynamicManifest(token) {
-  // Android/Chrome "Přidat na plochu" ignoruje ?c=... v adrese a vždycky
-  // otevře pevný start_url z manifest.json. Aby ikona vždycky mířila na
-  // správného klienta, appka si při každém načtení vygeneruje vlastní
-  // manifest s tímhle klientovým odkazem jako start_url.
-  const manifest = {
-    name: 'Wellness Check-in',
-    short_name: 'Wellness',
-    description: 'Denní wellness monitoring a RPE check-in',
-    start_url: `index.html?c=${token}`,
-    scope: '.',
-    display: 'standalone',
-    background_color: '#0a0f0d',
-    theme_color: '#0a0f0d',
-    orientation: 'portrait',
-    icons: [
-      { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-    ],
-  };
-  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-  document.getElementById('app-manifest-link').setAttribute('href', URL.createObjectURL(blob));
-}
-
 async function init() {
   clientToken = getTokenFromUrl() || localStorage.getItem('wellness_token');
 
@@ -351,8 +327,6 @@ async function init() {
     document.getElementById('screen-invalid').classList.remove('hidden');
     return;
   }
-
-  setupDynamicManifest(clientToken);
 
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session && session.user.email === deriveEmail(clientToken)) {
