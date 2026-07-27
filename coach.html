@@ -99,6 +99,18 @@ tr:last-child td{ border-bottom:none; }
   </div>
 </div>
 
+<!-- RESET PASSWORD -->
+<div id="screen-reset" class="center-screen hidden">
+  <h1 style="margin-bottom:4px">Nové heslo</h1>
+  <div style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Zadej svoje nové heslo pro přihlášení do coach dashboardu.</div>
+  <div class="card">
+    <label class="field-label">Nové heslo</label>
+    <input type="password" id="reset-password" placeholder="alespoň 6 znaků">
+    <button class="btn" style="width:100%;margin-top:16px" onclick="setNewPassword()">Uložit nové heslo</button>
+    <div id="reset-msg"></div>
+  </div>
+</div>
+
 <!-- DASHBOARD -->
 <div id="screen-dashboard" class="wrap hidden">
   <div class="topbar">
@@ -240,7 +252,20 @@ let currentTableFilter = 'all';
 let currentSort = { key: 'entry_date', dir: -1 };
 
 function showScreen(id) {
-  ['screen-login','screen-dashboard','screen-detail'].forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+  ['screen-login','screen-reset','screen-dashboard','screen-detail'].forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+}
+
+supabaseClient.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') showScreen('screen-reset');
+});
+
+async function setNewPassword() {
+  const password = document.getElementById('reset-password').value;
+  if (password.length < 6) { showMsg('reset-msg', 'Heslo musí mít alespoň 6 znaků.', false); return; }
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if (error) { showMsg('reset-msg', error.message, false); return; }
+  showMsg('reset-msg', 'Heslo změněno!', true);
+  setTimeout(() => loadDashboard(), 800);
 }
 
 // ---------------- AUTH ----------------
