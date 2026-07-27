@@ -3,232 +3,596 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kouč dashboard</title>
+<title>Coach Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="config.js"></script>
 
 <style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #0f172a;
-    color: #f1f5f9;
-    margin: 0;
-    padding: 16px;
-    min-height: 100vh;
-  }
-  h1 { font-size: 20px; margin: 0 0 16px; }
-  .card { background: #1e293b; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
-  label { display: block; margin: 14px 0 6px; font-size: 14px; color: #cbd5e1; }
-  input[type=email], input[type=password] {
-    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155;
-    background: #0f172a; color: #f1f5f9; font-size: 16px;
-  }
-  button {
-    width: 100%; padding: 14px; border: none; border-radius: 10px;
-    background: #38bdf8; color: #0f172a; font-size: 16px; font-weight: 600;
-    margin-top: 16px; cursor: pointer;
-  }
-  button.secondary { background: transparent; color: #94a3b8; border: 1px solid #334155; margin-top: 0; width: auto; }
-  .hidden { display: none !important; }
-  .msg { font-size: 14px; padding: 10px; border-radius: 8px; margin-top: 10px; }
-  .msg.error { background: #7f1d1d; color: #fecaca; }
-  .row-between { display: flex; justify-content: space-between; align-items: center; }
-  .client-item {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 4px; border-bottom: 1px solid #334155; cursor: pointer;
-  }
-  .client-item:last-child { border-bottom: none; }
-  .badge { font-size: 12px; color: #94a3b8; }
-  canvas { max-height: 220px; margin-bottom: 24px; }
-  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-  .stat { background: #0f172a; border-radius: 10px; padding: 10px; text-align: center; }
-  .stat .num { font-size: 22px; font-weight: 700; color: #38bdf8; }
-  .stat .label { font-size: 11px; color: #94a3b8; }
-  .entry { padding: 8px 0; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; }
+:root{
+  --bg:#0a0f0d; --bg-elevated:#0d1310; --card:#121a16; --card-2:#171f1a;
+  --border:#202a23; --accent:#2ee6a6; --accent-dim:#1b7a5c; --accent-soft:rgba(46,230,166,.12);
+  --text:#eef2f0; --text-dim:#8fa19a; --text-faint:#556059;
+  --danger:#f87171; --danger-soft:rgba(248,113,113,.12); --warning:#fbbf24; --radius:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{ margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif; min-height:100vh;}
+.wrap{ max-width:960px; margin:0 auto; padding:20px 16px 60px; }
+h1{ font-size:22px; margin:0; font-weight:800; letter-spacing:-.02em; }
+h2{ font-size:14px; margin:0 0 14px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; }
+.card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:16px; }
+button{ font-family:inherit; cursor:pointer; }
+.btn{ padding:13px 18px; border:none; border-radius:11px; background:var(--accent); color:#062018; font-size:14px; font-weight:800; }
+.btn.secondary{ background:var(--card-2); color:var(--text); border:1px solid var(--border); }
+.btn.ghost{ background:transparent; color:var(--text-dim); border:1px solid var(--border); }
+.btn.danger{ background:transparent; color:var(--danger); border:1px solid #4a2323; }
+.btn.small{ padding:8px 12px; font-size:12.5px; }
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=file]{
+  width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-elevated); color:var(--text); font-size:15px; font-family:inherit;
+}
+.hidden{ display:none !important; }
+.center-screen{ min-height:100vh; display:flex; flex-direction:column; justify-content:center; max-width:420px; margin:0 auto; padding:16px;}
+.topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;}
+.kpi-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+.kpi{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+.kpi .num{ font-size:24px; font-weight:800; color:var(--accent); letter-spacing:-.02em; }
+.kpi .num.alert{ color:var(--danger); }
+.kpi .lbl{ font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin-top:2px;}
+.toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+.toolbar input[type=text]{ flex:1; min-width:160px; }
+.chip{ padding:8px 13px; border-radius:99px; background:var(--card-2); border:1px solid var(--border); color:var(--text-dim); font-size:12.5px; font-weight:700; white-space:nowrap;}
+.chip.active{ background:var(--accent-soft); border-color:var(--accent-dim); color:var(--text); }
+.client-row{ display:flex; align-items:center; gap:12px; padding:14px 6px; border-bottom:1px solid var(--border); cursor:pointer; }
+.client-row:last-child{ border-bottom:none; }
+.client-row:hover{ background:var(--card-2); }
+.status-dot{ width:9px; height:9px; border-radius:50%; background:var(--text-faint); flex-shrink:0; }
+.status-dot.ok{ background:var(--accent); }
+.status-dot.alert{ background:var(--danger); }
+.client-row .name{ font-weight:700; font-size:14.5px; flex:1; }
+.client-row .meta{ font-size:11.5px; color:var(--text-faint); }
+.client-row .rd{ font-size:16px; font-weight:800; color:var(--accent); min-width:36px; text-align:right; }
+.chev{ color:var(--text-faint); }
+.badge{ font-size:10.5px; padding:3px 8px; border-radius:99px; background:var(--danger-soft); color:#fca5a5; font-weight:700; }
+canvas{ max-height:220px; }
+table{ width:100%; border-collapse:collapse; font-size:13px; }
+th{ text-align:left; padding:9px 8px; color:var(--text-faint); font-size:11px; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--border); cursor:pointer; user-select:none;}
+td{ padding:9px 8px; border-bottom:1px solid var(--border); color:var(--text-dim); }
+tr:last-child td{ border-bottom:none; }
+.table-wrap{ overflow-x:auto; }
+.msg{ font-size:13.5px; padding:11px 14px; border-radius:10px; margin-top:10px; font-weight:600;}
+.msg.error{ background:#2a1414; color:#fca5a5; }
+.msg.ok{ background:#0f2a1c; color:#86efac; }
+.modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
+.modal{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px; max-width:420px; width:100%; }
+.link-box{ background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:13px; word-break:break-all; margin:8px 0; color:var(--accent); }
+.pin-box{ background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:22px; font-weight:800; letter-spacing:.2em; text-align:center; margin:8px 0; }
+.tabs{ display:flex; gap:8px; margin-bottom:16px; }
+.tab-btn{ padding:10px 16px; border-radius:10px; background:var(--card-2); border:1px solid var(--border); color:var(--text-dim); font-weight:700; font-size:13px;}
+.tab-btn.active{ background:var(--accent); color:#062018; border-color:var(--accent); }
+.field-label{ display:block; font-size:13px; color:var(--text-dim); margin:14px 0 6px; font-weight:600;}
+.section-note{ font-size:12px; color:var(--text-faint); line-height:1.4; }
+@media print {
+  .no-print{ display:none !important; }
+  body{ background:#fff; color:#000; }
+  .card{ border:1px solid #ccc; background:#fff; }
+}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
-<div id="login-section" class="card">
-  <h1>Kouč — přihlášení</h1>
-  <label>Email</label>
-  <input type="email" id="login-email">
-  <label>Heslo</label>
-  <input type="password" id="login-password">
-  <button onclick="login()">Přihlásit se</button>
-  <div id="login-msg"></div>
+<div id="screen-login" class="center-screen hidden">
+  <h1 style="margin-bottom:4px">Coach Dashboard</h1>
+  <div style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Přihlášení pro trenéra</div>
+  <div class="card">
+    <label class="field-label">Email</label>
+    <input type="email" id="login-email">
+    <label class="field-label">Heslo</label>
+    <input type="password" id="login-password">
+    <button class="btn" style="width:100%;margin-top:16px" onclick="login()">Přihlásit se</button>
+    <div id="login-msg"></div>
+  </div>
 </div>
 
-<!-- CLIENT LIST -->
-<div id="list-section" class="hidden">
-  <div class="card row-between">
-    <h1 style="margin:0">Klienti</h1>
-    <button class="secondary" onclick="logout()">Odhlásit</button>
+<!-- DASHBOARD -->
+<div id="screen-dashboard" class="wrap hidden">
+  <div class="topbar">
+    <h1>Přehled klientů</h1>
+    <div style="display:flex;gap:8px">
+      <button class="btn secondary small" onclick="exportAllCsv()">Export CSV</button>
+      <button class="btn secondary small" onclick="toggleImport()">Import CSV</button>
+      <button class="btn small" onclick="openAddClient()">+ Přidat klienta</button>
+      <button class="btn ghost small" onclick="logout()">Odhlásit</button>
+    </div>
   </div>
-  <div class="card" id="client-list"></div>
+
+  <div id="import-box" class="card hidden">
+    <h2>Import CSV</h2>
+    <div class="section-note" style="margin-bottom:10px">Formát: full_name, form_type, entry_date, answers_json (viz README).</div>
+    <input type="file" id="import-file" accept=".csv">
+    <button class="btn small" style="margin-top:10px" onclick="importCsv()">Nahrát</button>
+    <div id="import-msg"></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="num" id="kpi-total">–</div><div class="lbl">Klientů</div></div>
+    <div class="kpi"><div class="num" id="kpi-active">–</div><div class="lbl">Vyplnili dnes</div></div>
+    <div class="kpi"><div class="num" id="kpi-avg">–</div><div class="lbl">Ø readiness týmu</div></div>
+    <div class="kpi"><div class="num alert" id="kpi-alerts">–</div><div class="lbl">Upozornění</div></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="Hledat klienta..." oninput="renderClientList()">
+      <div class="chip active" data-filter="all" onclick="setFilter('all')">Vše</div>
+      <div class="chip" data-filter="missing" onclick="setFilter('missing')">Nevyplnili dnes</div>
+      <div class="chip" data-filter="alert" onclick="setFilter('alert')">Zranění/nemoc</div>
+      <div class="chip" data-filter="low" onclick="setFilter('low')">Nízká readiness</div>
+    </div>
+    <div id="client-list"></div>
+  </div>
 </div>
 
 <!-- CLIENT DETAIL -->
-<div id="detail-section" class="hidden">
-  <div class="card row-between">
-    <h1 style="margin:0" id="detail-name"></h1>
-    <button class="secondary" onclick="backToList()">← Zpět</button>
+<div id="screen-detail" class="wrap hidden">
+  <div class="topbar no-print">
+    <div>
+      <div class="section-note" style="text-transform:uppercase;font-weight:700;letter-spacing:.05em">Detail klienta</div>
+      <h1 id="detail-name">—</h1>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn secondary small" onclick="exportClientCsv()">Export CSV</button>
+      <button class="btn secondary small" onclick="window.print()">Tisk reportu</button>
+      <button class="btn ghost small" onclick="backToList()">← Zpět</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="num" id="d-kpi-readiness">–</div><div class="lbl">Dnešní readiness</div></div>
+    <div class="kpi"><div class="num" id="d-kpi-avg7">–</div><div class="lbl">Ø 7 dní</div></div>
+    <div class="kpi"><div class="num" id="d-kpi-load">–</div><div class="lbl">Zátěž 7 dní</div></div>
+    <div class="kpi"><div class="num alert" id="d-kpi-flag">–</div><div class="lbl">Aktivní upozornění</div></div>
   </div>
 
   <div class="card">
-    <div class="stat-grid" id="stat-grid"></div>
-    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">Wellness trend (30 dní)</div>
+    <h2>Wellness trend</h2>
     <canvas id="wellnessChart"></canvas>
-    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">RPE trend (30 dní)</div>
-    <canvas id="rpeChart"></canvas>
   </div>
 
   <div class="card">
-    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">Poslední záznamy</div>
-    <div id="entries-list"></div>
+    <h2>Tréninková zátěž (RPE × minuty)</h2>
+    <canvas id="loadChart"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="tabs no-print">
+      <div class="tab-btn active" data-t="all" onclick="setTableFilter('all')">Vše</div>
+      <div class="tab-btn" data-t="wellness" onclick="setTableFilter('wellness')">Wellness</div>
+      <div class="tab-btn" data-t="rpe" onclick="setTableFilter('rpe')">RPE</div>
+    </div>
+    <div class="table-wrap">
+      <table id="detail-table">
+        <thead><tr>
+          <th onclick="sortTable('entry_date')">Datum</th>
+          <th onclick="sortTable('form_type')">Typ</th>
+          <th onclick="sortTable('readiness')">Readiness</th>
+          <th onclick="sortTable('rpe')">RPE</th>
+          <th onclick="sortTable('load')">Zátěž</th>
+          <th>Poznámka</th>
+        </tr></thead>
+        <tbody id="detail-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLIENT MODAL -->
+<div id="modal-add" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 style="margin-bottom:14px">Přidat klienta</h2>
+    <div id="add-step-form">
+      <label class="field-label">Jméno klienta</label>
+      <input type="text" id="new-client-name" placeholder="Jan Novák">
+      <button class="btn" style="width:100%;margin-top:16px" onclick="createClient()">Vytvořit</button>
+      <button class="btn ghost" style="width:100%;margin-top:8px" onclick="closeAddClient()">Zrušit</button>
+      <div id="add-msg"></div>
+    </div>
+    <div id="add-step-result" class="hidden">
+      <div class="section-note">Pošli klientovi tenhle odkaz a PIN (např. přes WhatsApp). Klient odkaz otevře na telefonu a rovnou si ho uloží na plochu.</div>
+      <label class="field-label">Osobní odkaz</label>
+      <div class="link-box" id="result-link"></div>
+      <button class="btn secondary small" onclick="copyText('result-link')">Zkopírovat odkaz</button>
+      <label class="field-label">PIN</label>
+      <div class="pin-box" id="result-pin"></div>
+      <button class="btn secondary small" onclick="copyText('result-pin')">Zkopírovat PIN</button>
+      <button class="btn" style="width:100%;margin-top:18px" onclick="closeAddClient()">Hotovo</button>
+    </div>
   </div>
 </div>
 
 <script>
-let wellnessChartInstance = null;
-let rpeChartInstance = null;
+const adminAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 
+function deriveEmail(token) { return `client-${token}@wellness.internal`; }
+function genToken() { return Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,10); }
+function genPin() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+let allClients = [];
+let allSubmissions = [];
+let currentFilter = 'all';
+let currentClientId = null;
+let currentTableFilter = 'all';
+let currentSort = { key: 'entry_date', dir: -1 };
+
+function showScreen(id) {
+  ['screen-login','screen-dashboard','screen-detail'].forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+}
+
+// ---------------- AUTH ----------------
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
-    document.getElementById('login-msg').innerHTML = `<div class="msg error">${error.message}</div>`;
-    return;
-  }
+  if (error) { showMsg('login-msg', error.message, false); return; }
   const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();
   if (!profile || profile.role !== 'coach') {
-    document.getElementById('login-msg').innerHTML = `<div class="msg error">Tento účet nemá práva kouče.</div>`;
+    showMsg('login-msg', 'Tento účet nemá práva kouče.', false);
     await supabaseClient.auth.signOut();
     return;
   }
-  document.getElementById('login-section').classList.add('hidden');
-  document.getElementById('list-section').classList.remove('hidden');
-  loadClients();
+  await loadDashboard();
 }
 
 async function logout() {
   await supabaseClient.auth.signOut();
-  document.getElementById('list-section').classList.add('hidden');
-  document.getElementById('detail-section').classList.add('hidden');
-  document.getElementById('login-section').classList.remove('hidden');
+  showScreen('screen-login');
 }
 
-async function loadClients() {
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .select('id, full_name')
-    .eq('role', 'client')
-    .order('full_name', { ascending: true });
-
-  if (error) {
-    document.getElementById('client-list').innerHTML = `<div class="msg error">${error.message}</div>`;
-    return;
-  }
-
-  document.getElementById('client-list').innerHTML = data.map(c =>
-    `<div class="client-item" onclick="openClient('${c.id}','${c.full_name.replace(/'/g, "\\'")}')">
-       <span>${c.full_name}</span><span class="badge">›</span>
-     </div>`
-  ).join('') || '<div class="entry">Zatím žádní klienti.</div>';
+function showMsg(id, text, ok) {
+  document.getElementById(id).innerHTML = `<div class="msg ${ok?'ok':'error'}">${text}</div>`;
 }
 
-function backToList() {
-  document.getElementById('detail-section').classList.add('hidden');
-  document.getElementById('list-section').classList.remove('hidden');
+// ---------------- DASHBOARD ----------------
+async function loadDashboard() {
+  showScreen('screen-dashboard');
+  const { data: clients } = await supabaseClient.from('profiles').select('*').eq('role', 'client').order('full_name');
+  allClients = clients || [];
+
+  const since = new Date(); since.setDate(since.getDate() - 30);
+  const { data: subs } = await supabaseClient.from('submissions').select('*').gte('entry_date', since.toISOString().slice(0,10));
+  allSubmissions = subs || [];
+
+  renderKpis();
+  renderClientList();
 }
 
-async function openClient(id, name) {
-  document.getElementById('list-section').classList.add('hidden');
-  document.getElementById('detail-section').classList.remove('hidden');
-  document.getElementById('detail-name').textContent = name;
+function todayStr() { return new Date().toISOString().slice(0,10); }
 
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
-  const { data, error } = await supabaseClient
-    .from('checkins')
-    .select('*')
-    .eq('user_id', id)
-    .gte('created_at', since.toISOString())
-    .order('created_at', { ascending: true });
+function computeReadiness(answers) {
+  const keys = ['sleep_quality','recovery','physical_fatigue','mental_fatigue','muscle_soreness'];
+  const vals = keys.map(k => answers[k]).filter(v => v != null);
+  if (!vals.length) return null;
+  return (vals.reduce((a,b)=>a+b,0) / vals.length) * 2;
+}
 
-  if (error) return;
+function hasFlag(answers) {
+  const inj = answers.injury?.value, ill = answers.illness?.value;
+  return (inj && inj !== 'none') || (ill && ill !== 'none');
+}
 
-  const daily = data.filter(d => d.type === 'daily');
-  const training = data.filter(d => d.type === 'training');
+function latestFor(clientId, type, dateStr) {
+  return allSubmissions.find(s => s.client_id === clientId && s.form_type === type && s.entry_date === dateStr);
+}
 
-  const avg = arr => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '–';
+function renderKpis() {
+  const today = todayStr();
+  document.getElementById('kpi-total').textContent = allClients.length;
 
-  document.getElementById('stat-grid').innerHTML = `
-    <div class="stat"><div class="num">${avg(daily.map(d => d.readiness).filter(v => v != null))}</div><div class="label">⌀ readiness</div></div>
-    <div class="stat"><div class="num">${avg(training.map(d => d.rpe).filter(v => v != null))}</div><div class="label">⌀ RPE</div></div>
-    <div class="stat"><div class="num">${data.length}</div><div class="label">záznamů (30d)</div></div>
-  `;
+  const activeToday = allClients.filter(c => latestFor(c.id, 'wellness', today));
+  document.getElementById('kpi-active').textContent = activeToday.length;
 
-  const labels = daily.map(d => new Date(d.created_at).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }));
+  const readinessToday = activeToday.map(c => computeReadiness(latestFor(c.id,'wellness',today).answers)).filter(v => v != null);
+  document.getElementById('kpi-avg').textContent = readinessToday.length ? (readinessToday.reduce((a,b)=>a+b,0)/readinessToday.length).toFixed(1) : '–';
+
+  const alerts = allClients.filter(c => { const w = latestFor(c.id,'wellness',today); return w && hasFlag(w.answers); });
+  document.getElementById('kpi-alerts').textContent = alerts.length;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
+  renderClientList();
+}
+
+function renderClientList() {
+  const today = todayStr();
+  const search = document.getElementById('search-input').value.toLowerCase();
+  let list = allClients.filter(c => c.full_name.toLowerCase().includes(search));
+
+  list = list.filter(c => {
+    const w = latestFor(c.id, 'wellness', today);
+    if (currentFilter === 'missing') return !w;
+    if (currentFilter === 'alert') return w && hasFlag(w.answers);
+    if (currentFilter === 'low') return w && computeReadiness(w.answers) !== null && computeReadiness(w.answers) < 5;
+    return true;
+  });
+
+  document.getElementById('client-list').innerHTML = list.map(c => {
+    const w = latestFor(c.id, 'wellness', today);
+    const rd = w ? computeReadiness(w.answers) : null;
+    const flag = w && hasFlag(w.answers);
+    const dotClass = flag ? 'alert' : (w ? 'ok' : '');
+    return `<div class="client-row" onclick="openClient('${c.id}')">
+      <div class="status-dot ${dotClass}"></div>
+      <div class="name">${escapeHtml(c.full_name)}</div>
+      ${flag ? '<div class="badge">upozornění</div>' : ''}
+      <div class="meta">${w ? 'vyplnil dnes' : 'nevyplnil dnes'}</div>
+      <div class="rd">${rd !== null ? rd.toFixed(1) : '–'}</div>
+      <div class="chev">›</div>
+    </div>`;
+  }).join('') || '<div class="section-note">Žádní klienti neodpovídají filtru.</div>';
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ---------------- ADD CLIENT ----------------
+function openAddClient() {
+  document.getElementById('modal-add').classList.remove('hidden');
+  document.getElementById('add-step-form').classList.remove('hidden');
+  document.getElementById('add-step-result').classList.add('hidden');
+  document.getElementById('new-client-name').value = '';
+}
+function closeAddClient() {
+  document.getElementById('modal-add').classList.add('hidden');
+  loadDashboard();
+}
+
+async function createClient() {
+  const name = document.getElementById('new-client-name').value.trim();
+  if (!name) { showMsg('add-msg', 'Zadej jméno klienta.', false); return; }
+
+  const token = genToken();
+  const pin = genPin();
+  const email = deriveEmail(token);
+
+  const { data, error } = await adminAuthClient.auth.signUp({
+    email, password: pin,
+    options: { data: { full_name: name, role: 'client', url_token: token } }
+  });
+  if (error) { showMsg('add-msg', error.message, false); return; }
+
+  await adminAuthClient.from('profiles').upsert({
+    id: data.user.id, full_name: name, role: 'client', url_token: token, active: true
+  });
+  await adminAuthClient.auth.signOut();
+
+  const base = window.location.href.replace(/coach\.html.*$/, 'index.html');
+  document.getElementById('result-link').textContent = `${base}?c=${token}`;
+  document.getElementById('result-pin').textContent = pin;
+  document.getElementById('add-step-form').classList.add('hidden');
+  document.getElementById('add-step-result').classList.remove('hidden');
+}
+
+function copyText(elId) {
+  const text = document.getElementById(elId).textContent;
+  navigator.clipboard.writeText(text);
+}
+
+// ---------------- CLIENT DETAIL ----------------
+async function openClient(id) {
+  currentClientId = id;
+  const client = allClients.find(c => c.id === id);
+  document.getElementById('detail-name').textContent = client.full_name;
+  showScreen('screen-detail');
+
+  const since = new Date(); since.setDate(since.getDate() - 60);
+  const { data: subs } = await supabaseClient
+    .from('submissions').select('*')
+    .eq('client_id', id)
+    .gte('entry_date', since.toISOString().slice(0,10))
+    .order('entry_date', { ascending: true });
+  currentClientSubs = subs || [];
+
+  renderDetailKpis();
+  renderDetailCharts();
+  currentTableFilter = 'all';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.t === 'all'));
+  renderDetailTable();
+}
+
+let currentClientSubs = [];
+
+function renderDetailKpis() {
+  const today = todayStr();
+  const wellnessToday = currentClientSubs.find(s => s.form_type==='wellness' && s.entry_date===today);
+  document.getElementById('d-kpi-readiness').textContent = wellnessToday ? computeReadiness(wellnessToday.answers).toFixed(1) : '–';
+
+  const last7 = new Date(); last7.setDate(last7.getDate()-7);
+  const last7str = last7.toISOString().slice(0,10);
+  const wellness7 = currentClientSubs.filter(s => s.form_type==='wellness' && s.entry_date >= last7str);
+  const avgs = wellness7.map(s => computeReadiness(s.answers)).filter(v=>v!=null);
+  document.getElementById('d-kpi-avg7').textContent = avgs.length ? (avgs.reduce((a,b)=>a+b,0)/avgs.length).toFixed(1) : '–';
+
+  const rpe7 = currentClientSubs.filter(s => s.form_type==='rpe' && s.entry_date >= last7str);
+  const load = rpe7.reduce((sum,s) => sum + ((+s.answers.rpe||0)*(+s.answers.duration_min||0)), 0);
+  document.getElementById('d-kpi-load').textContent = load;
+
+  const flagged = wellnessToday && hasFlag(wellnessToday.answers);
+  document.getElementById('d-kpi-flag').textContent = flagged ? 'ANO' : '—';
+}
+
+let wellnessChartInstance = null, loadChartInstance = null;
+function renderDetailCharts() {
+  const wellness = currentClientSubs.filter(s => s.form_type === 'wellness');
+  const labels = wellness.map(s => s.entry_date.slice(5));
+  const readiness = wellness.map(s => computeReadiness(s.answers));
+  const soreness = wellness.map(s => s.answers.muscle_soreness ?? null);
+  const sleep = wellness.map(s => s.answers.sleep_quality ?? null);
+
   const wctx = document.getElementById('wellnessChart');
   if (wellnessChartInstance) wellnessChartInstance.destroy();
   wellnessChartInstance = new Chart(wctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Readiness', data: daily.map(d => d.readiness), borderColor: '#38bdf8', tension: 0.3 },
-        { label: 'Spánek', data: daily.map(d => d.sleep_quality), borderColor: '#a78bfa', tension: 0.3 },
-        { label: 'Nálada', data: daily.map(d => d.mood), borderColor: '#34d399', tension: 0.3 },
-        { label: 'Bolestivost', data: daily.map(d => d.soreness), borderColor: '#fbbf24', tension: 0.3 },
-      ]
-    },
-    options: {
-      scales: { y: { min: 0, max: 10, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
-      plugins: { legend: { labels: { color: '#cbd5e1' } } }
-    }
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'Readiness (/10)', data:readiness, borderColor:'#2ee6a6', backgroundColor:'rgba(46,230,166,.08)', fill:true, tension:.35, spanGaps:true },
+      { label:'Spánek (/5)', data:sleep, borderColor:'#60a5fa', tension:.35, spanGaps:true },
+      { label:'Bolest svalů (/5)', data:soreness, borderColor:'#fbbf24', tension:.35, spanGaps:true },
+    ]},
+    options:{ scales:{ y:{ min:0, max:10, ticks:{color:'#8fa19a'}, grid:{color:'#202a23'} }, x:{ ticks:{color:'#8fa19a', maxTicksLimit:10}, grid:{display:false} } },
+      plugins:{ legend:{ labels:{ color:'#8fa19a', boxWidth:10, font:{size:11} } } } }
   });
 
-  const rpeLabels = training.map(d => new Date(d.created_at).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }));
-  const rctx = document.getElementById('rpeChart');
-  if (rpeChartInstance) rpeChartInstance.destroy();
-  rpeChartInstance = new Chart(rctx, {
-    type: 'line',
-    data: {
-      labels: rpeLabels,
-      datasets: [{ label: 'RPE', data: training.map(d => d.rpe), borderColor: '#f87171', tension: 0.3 }]
-    },
-    options: {
-      scales: { y: { min: 0, max: 10, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
-      plugins: { legend: { labels: { color: '#cbd5e1' } } }
-    }
-  });
+  const rpeRows = currentClientSubs.filter(s => s.form_type === 'rpe');
+  const rLabels = rpeRows.map(s => s.entry_date.slice(5));
+  const loads = rpeRows.map(s => (+s.answers.rpe||0) * (+s.answers.duration_min||0));
 
-  const list = data.slice().reverse().slice(0, 15).map(d => {
-    const date = new Date(d.created_at).toLocaleDateString('cs-CZ');
-    if (d.type === 'daily') {
-      return `<div class="entry">${date} · Denní · readiness ${d.readiness}, spánek ${d.sleep_quality}, bolest ${d.soreness}, nálada ${d.mood}, stres ${d.stress}</div>`;
-    }
-    return `<div class="entry">${date} · Trénink · RPE ${d.rpe}${d.duration_min ? ', ' + d.duration_min + ' min' : ''}${d.notes ? ' — ' + d.notes : ''}</div>`;
-  }).join('');
-  document.getElementById('entries-list').innerHTML = list || '<div class="entry">Zatím žádné záznamy.</div>';
+  const lctx = document.getElementById('loadChart');
+  if (loadChartInstance) loadChartInstance.destroy();
+  loadChartInstance = new Chart(lctx, {
+    type:'bar',
+    data:{ labels:rLabels, datasets:[{ label:'Zátěž (RPE × min)', data:loads, backgroundColor:'#2ee6a6' }] },
+    options:{ scales:{ y:{ ticks:{color:'#8fa19a'}, grid:{color:'#202a23'} }, x:{ ticks:{color:'#8fa19a', maxTicksLimit:10}, grid:{display:false} } },
+      plugins:{ legend:{ display:false } } }
+  });
 }
 
-// pokud je kouč už přihlášený, přeskoč rovnou na seznam
+function backToList() { loadDashboard(); showScreen('screen-dashboard'); }
+
+function setTableFilter(t) {
+  currentTableFilter = t;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+  renderDetailTable();
+}
+
+function sortTable(key) {
+  if (currentSort.key === key) currentSort.dir *= -1; else currentSort = { key, dir: 1 };
+  renderDetailTable();
+}
+
+function renderDetailTable() {
+  let rows = currentClientSubs.map(s => ({
+    entry_date: s.entry_date,
+    form_type: s.form_type,
+    readiness: s.form_type === 'wellness' ? computeReadiness(s.answers) : null,
+    rpe: s.form_type === 'rpe' ? s.answers.rpe : null,
+    load: s.form_type === 'rpe' ? (+s.answers.rpe||0)*(+s.answers.duration_min||0) : null,
+    note: s.form_type === 'rpe' ? (s.answers.session_note||'') : (hasFlag(s.answers) ? '⚠ zranění/nemoc' : ''),
+  }));
+  if (currentTableFilter !== 'all') rows = rows.filter(r => r.form_type === currentTableFilter);
+
+  rows.sort((a,b) => {
+    const va = a[currentSort.key], vb = b[currentSort.key];
+    if (va == null) return 1; if (vb == null) return -1;
+    return va > vb ? currentSort.dir : va < vb ? -currentSort.dir : 0;
+  });
+
+  document.getElementById('detail-tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td>${new Date(r.entry_date+'T00:00:00').toLocaleDateString('cs-CZ')}</td>
+      <td>${r.form_type === 'wellness' ? 'Wellness' : 'RPE'}</td>
+      <td>${r.readiness != null ? r.readiness.toFixed(1) : '–'}</td>
+      <td>${r.rpe ?? '–'}</td>
+      <td>${r.load ?? '–'}</td>
+      <td>${escapeHtml(r.note)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="section-note">Žádné záznamy.</td></tr>';
+}
+
+// ---------------- CSV EXPORT / IMPORT ----------------
+function toCsvValue(v) {
+  const s = (v === null || v === undefined) ? '' : String(v);
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(r => r.map(toCsvValue).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function exportClientCsv() {
+  const client = allClients.find(c => c.id === currentClientId);
+  const rows = [['full_name','form_type','entry_date','answers_json']];
+  currentClientSubs.forEach(s => rows.push([client.full_name, s.form_type, s.entry_date, JSON.stringify(s.answers)]));
+  downloadCsv(`${client.full_name.replace(/\s+/g,'_')}_export.csv`, rows);
+}
+
+function exportAllCsv() {
+  const rows = [['full_name','form_type','entry_date','answers_json']];
+  allSubmissions.forEach(s => {
+    const c = allClients.find(cl => cl.id === s.client_id);
+    rows.push([c ? c.full_name : s.client_id, s.form_type, s.entry_date, JSON.stringify(s.answers)]);
+  });
+  downloadCsv('wellness_export_all.csv', rows);
+}
+
+function toggleImport() { document.getElementById('import-box').classList.toggle('hidden'); }
+
+function parseCsv(text) {
+  const rows = []; let row = []; let field = ''; let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i+1] === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { field += c; }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else { field += c; }
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+async function importCsv() {
+  const fileInput = document.getElementById('import-file');
+  if (!fileInput.files.length) { showMsg('import-msg', 'Vyber CSV soubor.', false); return; }
+  const text = await fileInput.files[0].text();
+  const rows = parseCsv(text);
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const iName = header.indexOf('full_name'), iType = header.indexOf('form_type'),
+        iDate = header.indexOf('entry_date'), iAns = header.indexOf('answers_json');
+
+  if (iName < 0 || iType < 0 || iDate < 0 || iAns < 0) {
+    showMsg('import-msg', 'CSV musí mít sloupce: full_name, form_type, entry_date, answers_json', false);
+    return;
+  }
+
+  let ok = 0, fail = 0;
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row[iName]) continue;
+    const client = allClients.find(c => c.full_name.trim().toLowerCase() === row[iName].trim().toLowerCase());
+    if (!client) { fail++; continue; }
+    let answers;
+    try { answers = JSON.parse(row[iAns]); } catch(e) { fail++; continue; }
+    const { error } = await supabaseClient.from('submissions').upsert({
+      client_id: client.id, form_type: row[iType].trim(), entry_date: row[iDate].trim(), answers
+    }, { onConflict: 'client_id,form_type,entry_date' });
+    if (error) fail++; else ok++;
+  }
+  showMsg('import-msg', `Hotovo: ${ok} importováno, ${fail} přeskočeno.`, fail === 0);
+  loadDashboard();
+}
+
+// ---------------- INIT ----------------
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) return;
-  const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
-  if (profile && profile.role === 'coach') {
-    document.getElementById('login-section').classList.add('hidden');
-    document.getElementById('list-section').classList.remove('hidden');
-    loadClients();
+  if (session) {
+    const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
+    if (profile && profile.role === 'coach') { await loadDashboard(); return; }
   }
+  showScreen('screen-login');
 })();
 </script>
 </body>

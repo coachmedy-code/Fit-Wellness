@@ -2,11 +2,11 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wellness Check-in</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Wellness</title>
 
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1e293b">
+<meta name="theme-color" content="#0a0f0d">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,314 +17,652 @@
 <script src="config.js"></script>
 
 <style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #0f172a;
-    color: #f1f5f9;
-    margin: 0;
-    padding: 16px;
-    padding-bottom: 48px;
-    min-height: 100vh;
-  }
-  h1 { font-size: 20px; margin: 0 0 16px; }
-  .card {
-    background: #1e293b;
-    border-radius: 14px;
-    padding: 18px;
-    margin-bottom: 16px;
-  }
-  label { display: block; margin: 14px 0 6px; font-size: 14px; color: #cbd5e1; }
-  input[type=text], input[type=email], input[type=password], input[type=number], textarea {
-    width: 100%;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #334155;
-    background: #0f172a;
-    color: #f1f5f9;
-    font-size: 16px;
-  }
-  input[type=range] { width: 100%; height: 36px; accent-color: #38bdf8; }
-  .range-value { text-align: right; font-size: 20px; font-weight: 600; color: #38bdf8; }
-  button {
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 10px;
-    background: #38bdf8;
-    color: #0f172a;
-    font-size: 16px;
-    font-weight: 600;
-    margin-top: 16px;
-    cursor: pointer;
-  }
-  button.secondary { background: transparent; color: #94a3b8; border: 1px solid #334155; }
-  button.tab { background: #334155; color: #cbd5e1; margin-top: 0; }
-  button.tab.active { background: #38bdf8; color: #0f172a; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-  .tabs button { flex: 1; }
-  .hidden { display: none !important; }
-  .msg { font-size: 14px; padding: 10px; border-radius: 8px; margin-top: 10px; }
-  .msg.error { background: #7f1d1d; color: #fecaca; }
-  .msg.ok { background: #14532d; color: #bbf7d0; }
-  .toplink { text-align: center; margin-top: 12px; font-size: 14px; color: #94a3b8; }
-  .toplink a { color: #38bdf8; cursor: pointer; }
-  .row-between { display: flex; justify-content: space-between; align-items: center; }
-  canvas { max-height: 220px; }
-  .entry { padding: 8px 0; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; }
+:root{
+  --bg:#0a0f0d;
+  --bg-elevated:#0d1310;
+  --card:#121a16;
+  --card-2:#171f1a;
+  --border:#202a23;
+  --accent:#2ee6a6;
+  --accent-dim:#1b7a5c;
+  --accent-soft:rgba(46,230,166,.12);
+  --text:#eef2f0;
+  --text-dim:#8fa19a;
+  --text-faint:#556059;
+  --danger:#f87171;
+  --warning:#fbbf24;
+  --radius:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  margin:0; padding:0 0 90px;
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+  min-height:100vh;
+}
+.wrap{ max-width:520px; margin:0 auto; padding:16px; }
+.h-eyebrow{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin:0 0 4px; }
+h1{font-size:22px;margin:0;font-weight:800;letter-spacing:-.02em;}
+h2{font-size:15px;margin:0 0 12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;}
+.card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:14px; }
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:99px; font-size:12px; font-weight:700; background:var(--card-2); color:var(--text-dim); border:1px solid var(--border);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+.dot.ok{background:var(--accent);}
+.dot.warn{background:var(--warning);}
+.dot.bad{background:var(--danger);}
+button{ font-family:inherit; cursor:pointer; }
+.btn{ width:100%; padding:15px; border:none; border-radius:12px; background:var(--accent); color:#062018; font-size:15px; font-weight:800; letter-spacing:-.01em; }
+.btn:active{ transform:scale(.98); }
+.btn.secondary{ background:var(--card-2); color:var(--text); border:1px solid var(--border); }
+.btn.ghost{ background:transparent; color:var(--text-dim); border:1px solid var(--border); }
+.btn.danger{ background:transparent; color:var(--danger); border:1px solid #4a2323; }
+.btn-row{ display:flex; gap:10px; }
+.btn-row .btn{ width:auto; flex:1; }
+input[type=text],input[type=number],input[type=password],input[type=date],input[type=time],textarea{
+  width:100%; padding:13px 14px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-elevated); color:var(--text); font-size:16px; font-family:inherit;
+}
+textarea{ resize:vertical; }
+label.field-label{ display:block; font-size:13.5px; color:var(--text-dim); margin:16px 0 8px; font-weight:600; line-height:1.35;}
+.hidden{display:none !important;}
+.kpi-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
+.kpi{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+.kpi .num{ font-size:26px; font-weight:800; color:var(--accent); letter-spacing:-.02em; }
+.kpi .lbl{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin-top:2px;}
+.kpi .sub{font-size:11px;color:var(--text-dim);margin-top:4px;}
+.action-row{ display:flex; gap:10px; margin-bottom:14px; }
+.action{ flex:1; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 12px; text-align:center; }
+.action .ic{ font-size:22px; }
+.action .t{ font-size:13px; font-weight:800; margin-top:6px; }
+.action .s{ font-size:11px; color:var(--text-faint); margin-top:2px; }
+.action.done{ border-color:var(--accent-dim); background:var(--accent-soft); }
+.scale5{ display:flex; gap:6px; }
+.scale5 .opt{ flex:1; padding:11px 4px; text-align:center; border-radius:9px; border:1px solid var(--border); background:var(--bg-elevated); font-size:11px; color:var(--text-dim); font-weight:600; line-height:1.25; }
+.scale5 .opt .n{ display:block; font-size:15px; font-weight:800; color:var(--text); margin-bottom:3px;}
+.scale5 .opt.sel{ background:var(--accent); color:#062018; border-color:var(--accent); }
+.scale5 .opt.sel .n{ color:#062018; }
+.hydration-row{ display:flex; gap:5px; }
+.hyd-swatch{ flex:1; height:44px; border-radius:8px; border:2px solid transparent; position:relative; display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px; font-size:11px; font-weight:800; color:#3a2e00;}
+.hyd-swatch.sel{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+.rpe-row{ display:flex; gap:4px; }
+.rpe-dot{ flex:1; aspect-ratio:1; border-radius:9px; border:1px solid var(--border); background:var(--bg-elevated); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:var(--text-dim);}
+.rpe-dot.sel{ background:var(--accent); color:#062018; border-color:var(--accent);}
+.rpe-caption{ text-align:center; margin-top:10px; font-size:13px; color:var(--accent); font-weight:700; min-height:18px;}
+.select-list .opt{ padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg-elevated); margin-bottom:8px; font-size:13.5px; color:var(--text-dim); font-weight:600;}
+.select-list .opt.sel{ background:var(--accent-soft); border-color:var(--accent-dim); color:var(--text); }
+.symptom{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); gap:8px;}
+.symptom:last-child{border-bottom:none;}
+.symptom .name{ font-size:12.5px; color:var(--text-dim); flex:1; }
+.sev-row{ display:flex; gap:3px; }
+.sev-dot{ width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:var(--bg-elevated); font-size:10px; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-weight:700;}
+.sev-dot.sel{ background:var(--accent); border-color:var(--accent); color:#062018; }
+.entry-row{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.entry-row:last-child{border-bottom:none;}
+.entry-row .date{ font-size:13px; font-weight:700; }
+.entry-row .type{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; margin-top:2px;}
+.entry-row .val{ font-size:15px; font-weight:800; color:var(--accent); }
+.chev{ color:var(--text-faint); font-size:18px; }
+.msg{ font-size:13.5px; padding:11px 14px; border-radius:10px; margin-top:10px; font-weight:600;}
+.msg.error{ background:#2a1414; color:#fca5a5; }
+.msg.ok{ background:#0f2a1c; color:#86efac; }
+canvas{ max-height:180px; }
+.center-screen{ min-height:100vh; display:flex; flex-direction:column; justify-content:center; }
+.brand{ text-align:center; margin-bottom:28px; }
+.brand .logo{ font-size:13px; font-weight:800; letter-spacing:.2em; color:var(--accent); text-transform:uppercase;}
+.pin-input{ font-size:32px !important; text-align:center; letter-spacing:.3em; font-weight:800; padding:18px !important;}
+.topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.topbar .who{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; font-weight:700;}
+.icon-btn{ background:var(--card-2); border:1px solid var(--border); color:var(--text-dim); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:700;}
+.streak{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-dim); font-weight:700;}
+.req{ color:var(--danger); }
+.section-note{ font-size:12px; color:var(--text-faint); margin-bottom:10px; line-height:1.4;}
 </style>
 </head>
 <body>
 
-<!-- AUTH -->
-<div id="auth-section" class="card">
-  <h1>Wellness Check-in</h1>
-  <div id="login-form">
-    <label>Email</label>
-    <input type="email" id="login-email" placeholder="tvuj@email.cz">
-    <label>Heslo</label>
-    <input type="password" id="login-password">
-    <button onclick="login()">Přihlásit se</button>
-    <div class="toplink">Nemáš účet? <a onclick="showRegister()">Zaregistruj se</a></div>
+<!-- PIN SCREEN -->
+<div id="screen-pin" class="wrap center-screen hidden">
+  <div class="brand">
+    <div class="logo">Wellness Monitoring</div>
   </div>
-
-  <div id="register-form" class="hidden">
-    <label>Jméno a příjmení</label>
-    <input type="text" id="reg-name" placeholder="Jan Novák">
-    <label>Email</label>
-    <input type="email" id="reg-email" placeholder="tvuj@email.cz">
-    <label>Heslo</label>
-    <input type="password" id="reg-password" placeholder="alespoň 6 znaků">
-    <button onclick="register()">Vytvořit účet</button>
-    <div class="toplink">Už máš účet? <a onclick="showLogin()">Přihlásit se</a></div>
+  <div class="card" style="text-align:center">
+    <div id="pin-greeting" style="font-size:18px;font-weight:800;margin-bottom:4px;">Ahoj</div>
+    <div style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Zadej svůj PIN pro vstup</div>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="pin-input" class="pin-input" placeholder="••••••" autofocus>
+    <button class="btn" style="margin-top:18px" onclick="submitPin()">Vstoupit</button>
+    <div id="pin-msg"></div>
   </div>
-
-  <div id="auth-msg"></div>
 </div>
 
-<!-- APP -->
-<div id="app-section" class="hidden">
-  <div class="card row-between">
+<!-- INVALID LINK SCREEN -->
+<div id="screen-invalid" class="wrap center-screen hidden">
+  <div class="card" style="text-align:center">
+    <div style="font-size:18px;font-weight:800;margin-bottom:8px;">Neplatný odkaz</div>
+    <div style="font-size:13.5px;color:var(--text-dim);">Tenhle odkaz nefunguje. Požádej svého trenéra o tvůj osobní odkaz do appky.</div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="wrap hidden">
+  <div class="topbar">
     <div>
-      <h1 style="margin-bottom:2px" id="welcome-name">Ahoj</h1>
-      <div style="font-size:13px;color:#94a3b8">dnešní check-in</div>
+      <div class="who">Wellness monitoring</div>
+      <h1 id="home-name">Ahoj</h1>
     </div>
-    <button class="secondary" style="width:auto;margin-top:0" onclick="logout()">Odhlásit</button>
+    <button class="icon-btn" onclick="logout()">Odhlásit</button>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" id="tab-daily" onclick="switchTab('daily')">Denní wellness</button>
-    <button class="tab" id="tab-training" onclick="switchTab('training')">Po tréninku (RPE)</button>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="num" id="kpi-readiness">–</div>
+      <div class="lbl">Dnešní readiness</div>
+      <div class="sub" id="kpi-readiness-sub">zatím nevyplněno</div>
+    </div>
+    <div class="kpi">
+      <div class="num" id="kpi-load">–</div>
+      <div class="lbl">Zátěž 7 dní</div>
+      <div class="sub" id="kpi-load-sub">RPE × minuty</div>
+    </div>
   </div>
 
-  <!-- DAILY FORM -->
-  <div class="card" id="daily-form">
-    <label>Kvalita spánku <span class="range-value" id="v-sleep">5</span></label>
-    <input type="range" min="1" max="10" value="5" id="sleep_quality" oninput="updateVal('sleep_quality','v-sleep')">
-
-    <label>Bolestivost svalů <span class="range-value" id="v-soreness">5</span></label>
-    <input type="range" min="1" max="10" value="5" id="soreness" oninput="updateVal('soreness','v-soreness')">
-
-    <label>Nálada <span class="range-value" id="v-mood">5</span></label>
-    <input type="range" min="1" max="10" value="5" id="mood" oninput="updateVal('mood','v-mood')">
-
-    <label>Stres <span class="range-value" id="v-stress">5</span></label>
-    <input type="range" min="1" max="10" value="5" id="stress" oninput="updateVal('stress','v-stress')">
-
-    <label>Celková připravenost (readiness) <span class="range-value" id="v-readiness">5</span></label>
-    <input type="range" min="1" max="10" value="5" id="readiness" oninput="updateVal('readiness','v-readiness')">
-
-    <button onclick="submitDaily()">Odeslat denní wellness</button>
+  <div class="action-row">
+    <div class="action" id="action-wellness" onclick="openForm('wellness')">
+      <div class="ic">🌅</div>
+      <div class="t">Ranní wellness</div>
+      <div class="s" id="action-wellness-sub">vyplnit dnes</div>
+    </div>
+    <div class="action" id="action-rpe" onclick="openForm('rpe')">
+      <div class="ic">💪</div>
+      <div class="t">Po tréninku</div>
+      <div class="s" id="action-rpe-sub">zadat RPE</div>
+    </div>
   </div>
-
-  <!-- TRAINING FORM -->
-  <div class="card hidden" id="training-form">
-    <label>RPE (jak náročný byl trénink) <span class="range-value" id="v-rpe">5</span></label>
-    <input type="range" min="1" max="10" value="5" id="rpe" oninput="updateVal('rpe','v-rpe')">
-
-    <label>Délka tréninku (minuty)</label>
-    <input type="number" id="duration_min" placeholder="60">
-
-    <label>Poznámka (nepovinné)</label>
-    <textarea id="notes" rows="3" placeholder="co jsi trénoval, jak ses cítil..."></textarea>
-
-    <button onclick="submitTraining()">Odeslat záznam tréninku</button>
-  </div>
-
-  <div id="submit-msg"></div>
 
   <div class="card">
-    <div style="font-size:14px;color:#cbd5e1;margin-bottom:8px">Tvůj trend - posledních 30 dní</div>
-    <canvas id="historyChart"></canvas>
+    <h2>Trend — 30 dní</h2>
+    <canvas id="trendChart"></canvas>
   </div>
 
-  <div class="card" id="history-list"></div>
+  <div class="card">
+    <h2>Historie</h2>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- FORM -->
+<div id="screen-form" class="wrap hidden">
+  <div class="topbar">
+    <div>
+      <div class="who" id="form-title-eyebrow">Formulář</div>
+      <h1 id="form-title">Wellness</h1>
+    </div>
+    <button class="icon-btn" onclick="closeForm()">Zpět</button>
+  </div>
+
+  <div class="card">
+    <label class="field-label">Datum záznamu</label>
+    <input type="date" id="form-date">
+    <div id="form-fields"></div>
+    <div id="form-msg"></div>
+    <button class="btn" style="margin-top:20px" onclick="saveCurrentForm()">Uložit záznam</button>
+  </div>
 </div>
 
 <script>
+// ---------------------------------------------------------------
+// FORM DEFINITIONS - přesně podle wellness dotazníku
+// ---------------------------------------------------------------
+const SCALE5_LABELS = {
+  sleep_quality: ['Velmi špatný','Špatný','Neutrální','Dobrý','Velmi dobrý'],
+  recovery: ['Velmi nezotavena','Nezotavena','Neutrální','Zotavena','Velmi dobře zotavena'],
+  physical_fatigue: ['Velmi unavený/á','Unavený/á','Neutrální','Čerstvý/á','Velmi čerstvé'],
+  mental_fatigue: ['Velmi unavený/á','Unavený/á','Neutrální','Energický/á','Velmi energický/á'],
+  muscle_soreness: ['Velmi vysoká bolest','Vysoká bolest','Mírná bolest','Nízká bolest','Žádná bolest'],
+};
+
+const FLAG_OPTIONS = [
+  { value: 'none', label: 'Žádný' },
+  { value: 'full', label: 'Ano, ale můžu trénovat naplno' },
+  { value: 'support', label: 'Ano, možná budu potřebovat podporu / úpravy' },
+  { value: 'discuss', label: 'Ano, chci se domluvit před tréninkem' },
+  { value: 'other', label: 'Ostatní' },
+];
+
+const SYMPTOMS = ['Menstruační bolest', 'Nadýmání', 'Bolest dolní části zad', 'Narušený spánek', 'Změny nálad', 'Změny chuti k jídlu'];
+const SEVERITY = ['Žádný příznak', 'Mírné', 'Střední', 'Těžké', 'Raději neříkám'];
+
+const HYDRATION_COLORS = ['#fdf8e1','#fbf0c4','#f9e39a','#f6d565','#f2c530','#eab410','#d99a0a','#b8790a'];
+
+const RPE_LABELS = { 0:'Žádná námaha',1:'Velmi lehká',2:'Velmi lehká',3:'Lehká',4:'Lehká',5:'Střední',6:'Střední',7:'Těžká',8:'Těžká',9:'Velmi těžká',10:'Maximální úsilí' };
+
+const FORM_DEFS = {
+  wellness: {
+    title: 'Ranní wellness',
+    eyebrow: 'Denní dotazník',
+    fields: [
+      { key: 'sleep_bedtime', type: 'time', label: 'V kolik hodin jsi včera šel/šla spát?' },
+      { key: 'sleep_wake', type: 'time', label: 'V kolik hodin ses dnes probudil/a?' },
+      { key: 'sleep_quality', type: 'scale5', label: 'Kvalita spánku' },
+      { key: 'recovery', type: 'scale5', label: 'Zotavení — jak moc se dnes cítíš zotavený/á?' },
+      { key: 'physical_fatigue', type: 'scale5', label: 'Fyzická únava — jak se dnes ráno cítíš?' },
+      { key: 'mental_fatigue', type: 'scale5', label: 'Duševní únava — jak se dnes ráno cítíš?' },
+      { key: 'muscle_soreness', type: 'scale5', label: 'Bolest svalů — jak silně tě dnes bolí svaly?' },
+      { key: 'hydration', type: 'hydration', label: 'Barva moči (hydratace) — 1 = světlá, 8 = tmavá' },
+      { key: 'injury', type: 'flagselect', label: 'Máš bolest, zranění nebo problém, který by mohl ovlivnit dnešní trénink?' },
+      { key: 'illness', type: 'flagselect', label: 'Máš dnes nějaké příznaky nemoci?' },
+      { key: 'cycle_day', type: 'cycle', label: 'Menstruační cyklus — aktuální den' },
+      { key: 'cycle_symptoms', type: 'symptoms', label: 'Menstruační příznaky dnes', conditional: (a) => a.cycle_day && a.cycle_day.mode === 'day' },
+    ]
+  },
+  rpe: {
+    title: 'Po tréninku',
+    eyebrow: 'RPE záznam',
+    fields: [
+      { key: 'rpe', type: 'rpe', label: 'RPE — jak těžký byl trénink?' },
+      { key: 'duration_min', type: 'number', label: 'Délka tréninku (minuty)', placeholder: '60' },
+      { key: 'session_note', type: 'textarea', label: 'Poznámka (nepovinné)', placeholder: 'co jsi trénoval/a...' },
+    ]
+  }
+};
+
+// ---------------------------------------------------------------
+// AUTH / SESSION
+// ---------------------------------------------------------------
+let clientToken = null;
 let currentUser = null;
+let currentProfile = null;
+let currentFormType = null;
+let currentFormAnswers = {};
 
-function showRegister() {
-  document.getElementById('login-form').classList.add('hidden');
-  document.getElementById('register-form').classList.remove('hidden');
-  document.getElementById('auth-msg').innerHTML = '';
-}
-function showLogin() {
-  document.getElementById('register-form').classList.add('hidden');
-  document.getElementById('login-form').classList.remove('hidden');
-  document.getElementById('auth-msg').innerHTML = '';
-}
-function showAuthMsg(text, ok) {
-  document.getElementById('auth-msg').innerHTML =
-    `<div class="msg ${ok ? 'ok' : 'error'}">${text}</div>`;
-}
-function showSubmitMsg(text, ok) {
-  document.getElementById('submit-msg').innerHTML =
-    `<div class="msg ${ok ? 'ok' : 'error'}">${text}</div>`;
-  setTimeout(() => document.getElementById('submit-msg').innerHTML = '', 3000);
+function getTokenFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('c');
 }
 
-async function register() {
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  if (!name || !email || password.length < 6) {
-    showAuthMsg('Vyplň jméno, email a heslo (min. 6 znaků).', false);
+function deriveEmail(token) {
+  return `client-${token}@wellness.internal`;
+}
+
+async function init() {
+  clientToken = getTokenFromUrl() || localStorage.getItem('wellness_token');
+
+  if (!clientToken) {
+    document.getElementById('screen-invalid').classList.remove('hidden');
     return;
   }
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
-  if (error) { showAuthMsg(error.message, false); return; }
 
-  if (data.user) {
-    await supabaseClient.from('profiles').insert({
-      id: data.user.id, full_name: name, role: 'client'
-    });
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session && session.user.email === deriveEmail(clientToken)) {
+    await loadHome();
+    return;
   }
-  showAuthMsg('Účet vytvořen! Pokud vidíš výzvu k potvrzení emailu, potvrď ho a pak se přihlas.', true);
-  showLogin();
+  if (session) {
+    await supabaseClient.auth.signOut();
+  }
+
+  const savedName = localStorage.getItem('wellness_name_' + clientToken);
+  document.getElementById('pin-greeting').textContent = savedName ? ('Ahoj, ' + savedName) : 'Ahoj';
+  document.getElementById('screen-pin').classList.remove('hidden');
 }
 
-async function login() {
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) { showAuthMsg(error.message, false); return; }
-  await loadApp();
+async function submitPin() {
+  const pin = document.getElementById('pin-input').value.trim();
+  if (pin.length < 4) {
+    showMsg('pin-msg', 'Zadej svůj PIN.', false);
+    return;
+  }
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: deriveEmail(clientToken), password: pin
+  });
+  if (error) {
+    showMsg('pin-msg', 'Nesprávný PIN, zkus to znovu.', false);
+    return;
+  }
+  localStorage.setItem('wellness_token', clientToken);
+  await loadHome();
 }
 
 async function logout() {
   await supabaseClient.auth.signOut();
-  document.getElementById('app-section').classList.add('hidden');
-  document.getElementById('auth-section').classList.remove('hidden');
+  localStorage.removeItem('wellness_token');
+  location.href = location.pathname;
 }
 
-function updateVal(inputId, spanId) {
-  document.getElementById(spanId).textContent = document.getElementById(inputId).value;
+function showMsg(elId, text, ok) {
+  const el = document.getElementById(elId);
+  el.innerHTML = `<div class="msg ${ok ? 'ok' : 'error'}">${text}</div>`;
+  setTimeout(() => el.innerHTML = '', 3500);
 }
 
-function switchTab(tab) {
-  document.getElementById('daily-form').classList.toggle('hidden', tab !== 'daily');
-  document.getElementById('training-form').classList.toggle('hidden', tab !== 'training');
-  document.getElementById('tab-daily').classList.toggle('active', tab === 'daily');
-  document.getElementById('tab-training').classList.toggle('active', tab === 'training');
+function showScreen(id) {
+  ['screen-pin','screen-invalid','screen-home','screen-form'].forEach(s => {
+    document.getElementById(s).classList.toggle('hidden', s !== id);
+  });
 }
 
-async function submitDaily() {
-  const payload = {
-    user_id: currentUser.id,
-    type: 'daily',
-    sleep_quality: +document.getElementById('sleep_quality').value,
-    soreness: +document.getElementById('soreness').value,
-    mood: +document.getElementById('mood').value,
-    stress: +document.getElementById('stress').value,
-    readiness: +document.getElementById('readiness').value,
-  };
-  const { error } = await supabaseClient.from('checkins').insert(payload);
-  if (error) { showSubmitMsg(error.message, false); return; }
-  showSubmitMsg('Uloženo, díky!', true);
-  loadHistory();
-}
+// ---------------------------------------------------------------
+// HOME
+// ---------------------------------------------------------------
+async function loadHome() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  currentUser = user;
+  const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', user.id).single();
+  currentProfile = profile;
+  if (profile) localStorage.setItem('wellness_name_' + clientToken, profile.full_name);
 
-async function submitTraining() {
-  const payload = {
-    user_id: currentUser.id,
-    type: 'training',
-    rpe: +document.getElementById('rpe').value,
-    duration_min: document.getElementById('duration_min').value ? +document.getElementById('duration_min').value : null,
-    notes: document.getElementById('notes').value.trim() || null,
-  };
-  const { error } = await supabaseClient.from('checkins').insert(payload);
-  if (error) { showSubmitMsg(error.message, false); return; }
-  showSubmitMsg('Uloženo, díky!', true);
-  document.getElementById('duration_min').value = '';
-  document.getElementById('notes').value = '';
-  loadHistory();
-}
+  document.getElementById('home-name').textContent = 'Ahoj, ' + (profile?.full_name || '');
+  showScreen('screen-home');
 
-let chartInstance = null;
-async function loadHistory() {
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
-  const { data, error } = await supabaseClient
-    .from('checkins')
+  const today = todayStr();
+  const since = new Date(); since.setDate(since.getDate() - 30);
+  const { data: rows } = await supabaseClient
+    .from('submissions')
     .select('*')
-    .eq('user_id', currentUser.id)
-    .gte('created_at', since.toISOString())
-    .order('created_at', { ascending: true });
+    .eq('client_id', user.id)
+    .gte('entry_date', since.toISOString().slice(0,10))
+    .order('entry_date', { ascending: true });
 
-  if (error) return;
+  const all = rows || [];
+  const todayWellness = all.find(r => r.form_type === 'wellness' && r.entry_date === today);
+  const todayRpe = all.find(r => r.form_type === 'rpe' && r.entry_date === today);
 
-  const labels = data.map(d => new Date(d.created_at).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }));
-  const readiness = data.map(d => d.readiness);
-  const rpe = data.map(d => d.rpe);
+  document.getElementById('action-wellness').classList.toggle('done', !!todayWellness);
+  document.getElementById('action-wellness-sub').textContent = todayWellness ? 'upravit dnešní' : 'vyplnit dnes';
+  document.getElementById('action-rpe').classList.toggle('done', !!todayRpe);
+  document.getElementById('action-rpe-sub').textContent = todayRpe ? 'upravit dnešní' : 'zadat RPE';
 
-  const ctx = document.getElementById('historyChart');
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(ctx, {
+  if (todayWellness) {
+    const r = computeReadiness(todayWellness.answers);
+    document.getElementById('kpi-readiness').textContent = r !== null ? r.toFixed(1) : '–';
+    document.getElementById('kpi-readiness-sub').textContent = '/ 10';
+  } else {
+    document.getElementById('kpi-readiness').textContent = '–';
+    document.getElementById('kpi-readiness-sub').textContent = 'zatím nevyplněno';
+  }
+
+  const last7 = new Date(); last7.setDate(last7.getDate() - 7);
+  const rpeRows = all.filter(r => r.form_type === 'rpe' && r.entry_date >= last7.toISOString().slice(0,10));
+  const load = rpeRows.reduce((sum, r) => sum + ((+r.answers.rpe || 0) * (+r.answers.duration_min || 0)), 0);
+  document.getElementById('kpi-load').textContent = load || '0';
+
+  renderTrendChart(all);
+  renderHistory(all);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function computeReadiness(answers) {
+  const keys = ['sleep_quality','recovery','physical_fatigue','mental_fatigue','muscle_soreness'];
+  const vals = keys.map(k => answers[k]).filter(v => v != null);
+  if (!vals.length) return null;
+  const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+  return avg * 2; // škála 1-5 -> 1-10
+}
+
+let trendChartInstance = null;
+function renderTrendChart(all) {
+  const wellness = all.filter(r => r.form_type === 'wellness');
+  const labels = wellness.map(r => r.entry_date.slice(5));
+  const readiness = wellness.map(r => computeReadiness(r.answers));
+
+  const rpeByDate = {};
+  all.filter(r => r.form_type === 'rpe').forEach(r => { rpeByDate[r.entry_date] = r.answers.rpe; });
+  const rpeSeries = wellness.map(r => rpeByDate[r.entry_date] ?? null);
+
+  const ctx = document.getElementById('trendChart');
+  if (trendChartInstance) trendChartInstance.destroy();
+  trendChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Readiness', data: readiness, borderColor: '#38bdf8', spanGaps: true, tension: 0.3 },
-        { label: 'RPE', data: rpe, borderColor: '#f87171', spanGaps: true, tension: 0.3 },
+        { label: 'Readiness', data: readiness, borderColor: '#2ee6a6', backgroundColor:'rgba(46,230,166,.08)', fill:true, tension: .35, spanGaps:true },
+        { label: 'RPE', data: rpeSeries, borderColor: '#f87171', tension: .35, spanGaps:true },
       ]
     },
     options: {
-      scales: { y: { min: 0, max: 10, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
-      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+      scales: {
+        y: { min:0, max:10, ticks:{ color:'#8fa19a' }, grid:{ color:'#202a23' } },
+        x: { ticks:{ color:'#8fa19a', maxTicksLimit:8 }, grid:{ display:false } }
+      },
+      plugins: { legend: { labels:{ color:'#8fa19a', boxWidth:10, font:{size:11} } } }
     }
   });
+}
 
-  const list = data.slice().reverse().slice(0, 10).map(d => {
-    const date = new Date(d.created_at).toLocaleDateString('cs-CZ');
-    if (d.type === 'daily') {
-      return `<div class="entry">${date} · Denní · readiness ${d.readiness}, spánek ${d.sleep_quality}, nálada ${d.mood}</div>`;
+function renderHistory(all) {
+  const sorted = all.slice().sort((a,b) => b.entry_date.localeCompare(a.entry_date)).slice(0, 20);
+  document.getElementById('history-list').innerHTML = sorted.map(r => {
+    const dateFmt = new Date(r.entry_date + 'T00:00:00').toLocaleDateString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric' });
+    if (r.form_type === 'wellness') {
+      const rd = computeReadiness(r.answers);
+      return `<div class="entry-row" onclick="openForm('wellness','${r.entry_date}')">
+        <div><div class="date">${dateFmt}</div><div class="type">Wellness</div></div>
+        <div style="display:flex;align-items:center;gap:10px"><div class="val">${rd!==null?rd.toFixed(1):'–'}</div><div class="chev">›</div></div>
+      </div>`;
     }
-    return `<div class="entry">${date} · Trénink · RPE ${d.rpe}${d.duration_min ? ', ' + d.duration_min + ' min' : ''}</div>`;
-  }).join('');
-  document.getElementById('history-list').innerHTML = list || '<div class="entry">Zatím žádné záznamy.</div>';
+    return `<div class="entry-row" onclick="openForm('rpe','${r.entry_date}')">
+      <div><div class="date">${dateFmt}</div><div class="type">RPE</div></div>
+      <div style="display:flex;align-items:center;gap:10px"><div class="val">${r.answers.rpe ?? '–'}</div><div class="chev">›</div></div>
+    </div>`;
+  }).join('') || '<div class="section-note">Zatím žádné záznamy.</div>';
 }
 
-async function loadApp() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user) return;
-  currentUser = user;
+// ---------------------------------------------------------------
+// DYNAMIC FORM RENDERER
+// ---------------------------------------------------------------
+async function openForm(type, dateStr) {
+  currentFormType = type;
+  const def = FORM_DEFS[type];
+  document.getElementById('form-title').textContent = def.title;
+  document.getElementById('form-title-eyebrow').textContent = def.eyebrow;
+  const dateInput = document.getElementById('form-date');
+  dateInput.max = todayStr();
+  dateInput.value = dateStr || todayStr();
+  dateInput.onchange = () => loadAndRenderFields(type, dateInput.value);
 
-  const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', user.id).single();
-  document.getElementById('welcome-name').textContent = 'Ahoj, ' + (profile?.full_name || '');
-
-  document.getElementById('auth-section').classList.add('hidden');
-  document.getElementById('app-section').classList.remove('hidden');
-  loadHistory();
+  showScreen('screen-form');
+  await loadAndRenderFields(type, dateInput.value);
 }
 
-// při načtení stránky zkontroluj, jestli už je uživatel přihlášený
-(async () => {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) await loadApp();
-})();
+async function loadAndRenderFields(type, dateStr) {
+  const { data } = await supabaseClient
+    .from('submissions')
+    .select('answers')
+    .eq('client_id', currentUser.id)
+    .eq('form_type', type)
+    .eq('entry_date', dateStr)
+    .maybeSingle();
+  currentFormAnswers = (data && data.answers) || {};
+  renderFields(type);
+}
 
-// registrace service workera pro instalaci na plochu
+function renderFields(type) {
+  const def = FORM_DEFS[type];
+  const container = document.getElementById('form-fields');
+  container.innerHTML = '';
+  def.fields.forEach(f => {
+    if (f.conditional && !f.conditional(currentFormAnswers)) return;
+    container.appendChild(renderField(f));
+  });
+}
+
+function fieldWrap(label) {
+  const lbl = document.createElement('label');
+  lbl.className = 'field-label';
+  lbl.textContent = label;
+  return lbl;
+}
+
+function renderField(f) {
+  const wrap = document.createElement('div');
+  wrap.appendChild(fieldWrap(f.label));
+
+  if (f.type === 'time') {
+    const input = document.createElement('input');
+    input.type = 'time'; input.id = 'f_' + f.key;
+    input.value = currentFormAnswers[f.key] || '';
+    input.onchange = () => { currentFormAnswers[f.key] = input.value; };
+    wrap.appendChild(input);
+
+  } else if (f.type === 'number') {
+    const input = document.createElement('input');
+    input.type = 'number'; input.id = 'f_' + f.key;
+    input.placeholder = f.placeholder || '';
+    input.value = currentFormAnswers[f.key] ?? '';
+    input.oninput = () => { currentFormAnswers[f.key] = input.value ? +input.value : null; };
+    wrap.appendChild(input);
+
+  } else if (f.type === 'textarea') {
+    const input = document.createElement('textarea');
+    input.rows = 3; input.id = 'f_' + f.key;
+    input.placeholder = f.placeholder || '';
+    input.value = currentFormAnswers[f.key] || '';
+    input.oninput = () => { currentFormAnswers[f.key] = input.value; };
+    wrap.appendChild(input);
+
+  } else if (f.type === 'scale5') {
+    const row = document.createElement('div'); row.className = 'scale5';
+    const labels = SCALE5_LABELS[f.key];
+    labels.forEach((lab, i) => {
+      const val = i + 1;
+      const opt = document.createElement('div');
+      opt.className = 'opt' + (currentFormAnswers[f.key] === val ? ' sel' : '');
+      opt.innerHTML = `<span class="n">${val}</span>${lab}`;
+      opt.onclick = () => { currentFormAnswers[f.key] = val; renderFields(currentFormType); };
+      row.appendChild(opt);
+    });
+    wrap.appendChild(row);
+
+  } else if (f.type === 'hydration') {
+    const row = document.createElement('div'); row.className = 'hydration-row';
+    HYDRATION_COLORS.forEach((color, i) => {
+      const val = i + 1;
+      const sw = document.createElement('div');
+      sw.className = 'hyd-swatch' + (currentFormAnswers[f.key] === val ? ' sel' : '');
+      sw.style.background = color;
+      sw.textContent = val;
+      sw.onclick = () => { currentFormAnswers[f.key] = val; renderFields(currentFormType); };
+      row.appendChild(sw);
+    });
+    wrap.appendChild(row);
+
+  } else if (f.type === 'rpe') {
+    const row = document.createElement('div'); row.className = 'rpe-row';
+    for (let v = 0; v <= 10; v++) {
+      const dot = document.createElement('div');
+      dot.className = 'rpe-dot' + (currentFormAnswers[f.key] === v ? ' sel' : '');
+      dot.textContent = v;
+      dot.onclick = () => { currentFormAnswers[f.key] = v; renderFields(currentFormType); };
+      row.appendChild(dot);
+    }
+    wrap.appendChild(row);
+    const cap = document.createElement('div'); cap.className = 'rpe-caption';
+    cap.textContent = currentFormAnswers[f.key] != null ? RPE_LABELS[currentFormAnswers[f.key]] : '';
+    wrap.appendChild(cap);
+
+  } else if (f.type === 'flagselect') {
+    const list = document.createElement('div'); list.className = 'select-list';
+    FLAG_OPTIONS.forEach(o => {
+      const cur = currentFormAnswers[f.key] || {};
+      const div = document.createElement('div');
+      div.className = 'opt' + (cur.value === o.value ? ' sel' : '');
+      div.textContent = o.label;
+      div.onclick = () => { currentFormAnswers[f.key] = { value: o.value, note: cur.note || '' }; renderFields(currentFormType); };
+      list.appendChild(div);
+    });
+    wrap.appendChild(list);
+    if ((currentFormAnswers[f.key] || {}).value === 'other') {
+      const note = document.createElement('input');
+      note.type = 'text'; note.placeholder = 'Upřesni...';
+      note.style.marginTop = '8px';
+      note.value = (currentFormAnswers[f.key] || {}).note || '';
+      note.oninput = () => { currentFormAnswers[f.key].note = note.value; };
+      wrap.appendChild(note);
+    }
+
+  } else if (f.type === 'cycle') {
+    const cur = currentFormAnswers[f.key] || {};
+    const row = document.createElement('div'); row.className = 'btn-row'; row.style.marginBottom = '8px';
+    ['unsure','na'].forEach(mode => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn ' + (cur.mode === mode ? '' : 'secondary');
+      b.style.padding = '10px'; b.style.fontSize = '12.5px';
+      b.textContent = mode === 'unsure' ? 'Nejsem si jistá' : 'Nevztahuje se';
+      b.onclick = () => { currentFormAnswers[f.key] = { mode }; renderFields(currentFormType); };
+      row.appendChild(b);
+    });
+    wrap.appendChild(row);
+    const numInput = document.createElement('input');
+    numInput.type = 'number'; numInput.placeholder = 'Den cyklu (např. 3)';
+    numInput.value = cur.mode === 'day' ? (cur.day ?? '') : '';
+    numInput.oninput = () => { currentFormAnswers[f.key] = { mode: 'day', day: numInput.value ? +numInput.value : null }; };
+    numInput.onblur = () => renderFields(currentFormType);
+    wrap.appendChild(numInput);
+
+  } else if (f.type === 'symptoms') {
+    const cur = currentFormAnswers[f.key] || {};
+    const box = document.createElement('div');
+    SYMPTOMS.forEach(sym => {
+      const row = document.createElement('div'); row.className = 'symptom';
+      const name = document.createElement('div'); name.className = 'name'; name.textContent = sym;
+      row.appendChild(name);
+      const sevRow = document.createElement('div'); sevRow.className = 'sev-row';
+      SEVERITY.forEach((sLabel, si) => {
+        const d = document.createElement('div');
+        d.className = 'sev-dot' + (cur[sym] === si ? ' sel' : '');
+        d.textContent = si;
+        d.title = sLabel;
+        d.onclick = () => {
+          if (!currentFormAnswers[f.key]) currentFormAnswers[f.key] = {};
+          currentFormAnswers[f.key][sym] = si;
+          renderFields(currentFormType);
+        };
+        sevRow.appendChild(d);
+      });
+      row.appendChild(sevRow);
+      box.appendChild(row);
+    });
+    wrap.appendChild(box);
+    const legend = document.createElement('div');
+    legend.className = 'section-note';
+    legend.style.marginTop = '8px';
+    legend.textContent = '0 žádný · 1 mírné · 2 střední · 3 těžké · 4 raději neříkám';
+    wrap.appendChild(legend);
+  }
+
+  return wrap;
+}
+
+function closeForm() {
+  loadHome();
+}
+
+async function saveCurrentForm() {
+  const dateStr = document.getElementById('form-date').value;
+  if (!dateStr) { showMsg('form-msg', 'Vyber datum.', false); return; }
+
+  const payload = {
+    client_id: currentUser.id,
+    form_type: currentFormType,
+    entry_date: dateStr,
+    answers: currentFormAnswers,
+  };
+
+  const { error } = await supabaseClient
+    .from('submissions')
+    .upsert(payload, { onConflict: 'client_id,form_type,entry_date' });
+
+  if (error) { showMsg('form-msg', error.message, false); return; }
+  showMsg('form-msg', 'Uloženo!', true);
+  setTimeout(() => loadHome(), 500);
+}
+
+// ---------------------------------------------------------------
+init();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
 }
