@@ -63,6 +63,12 @@ input[type=text],input[type=number],input[type=password],input[type=date],input[
   background:var(--bg-elevated); color:var(--text); font-size:16px; font-family:inherit;
 }
 textarea{ resize:vertical; }
+select.select-native{
+  width:100%; padding:13px 14px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-elevated); color:var(--text); font-size:16px; font-family:inherit; appearance:none;
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238fa19a' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat:no-repeat; background-position:right 14px center; background-size:18px;
+}
 label.field-label{ display:block; font-size:13.5px; color:var(--text-dim); margin:16px 0 8px; font-weight:600; line-height:1.35;}
 .hidden{display:none !important;}
 .kpi-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
@@ -259,7 +265,7 @@ const SYMPTOMS = [
   { key: 'mood_changes', label: 'Změny nálad' },
   { key: 'appetite_changes', label: 'Změny chuti k jídlu' },
 ];
-const SEVERITY = ['Žádný příznak', 'Mírné', 'Střední', 'Těžké', 'Raději neříkám'];
+const SEVERITY = ['Žádný příznak', 'Mírné', 'Mírný', 'Těžké', 'Raději neříkám'];
 
 const HYDRATION_COLORS = ['#fdf8e1','#fbf0c4','#f9e39a','#f6d565','#f2c530','#eab410','#d99a0a','#b8790a'];
 
@@ -638,23 +644,23 @@ function renderField(f) {
 
   } else if (f.type === 'cycle') {
     const cur = currentFormAnswers[f.key] || {};
-    const row = document.createElement('div'); row.className = 'btn-row'; row.style.marginBottom = '8px';
-    ['unsure','na'].forEach(mode => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'btn ' + (cur.mode === mode ? '' : 'secondary');
-      b.style.padding = '10px'; b.style.fontSize = '12.5px';
-      b.textContent = mode === 'unsure' ? 'Nejsem si jistá' : 'Nevztahuje se';
-      b.onclick = () => { currentFormAnswers[f.key] = { mode }; renderFields(currentFormType); };
-      row.appendChild(b);
-    });
-    wrap.appendChild(row);
-    const numInput = document.createElement('input');
-    numInput.type = 'number'; numInput.placeholder = 'Den cyklu (např. 3)';
-    numInput.value = cur.mode === 'day' ? (cur.day ?? '') : '';
-    numInput.oninput = () => { currentFormAnswers[f.key] = { mode: 'day', day: numInput.value ? +numInput.value : null }; };
-    numInput.onblur = () => renderFields(currentFormType);
-    wrap.appendChild(numInput);
+    const select = document.createElement('select');
+    select.className = 'select-native';
+    const currentValue = cur.mode === 'day' ? `day-${cur.day}` : (cur.mode || '');
+    let optionsHtml = '<option value="">Vyberte jeden</option>';
+    for (let d = 1; d <= 15; d++) optionsHtml += `<option value="day-${d}">${d}</option>`;
+    optionsHtml += '<option value="unsure">Nejsem si jistá/á</option>';
+    optionsHtml += '<option value="na">Nevztahuje se</option>';
+    select.innerHTML = optionsHtml;
+    select.value = currentValue;
+    select.onchange = () => {
+      const v = select.value;
+      if (!v) { delete currentFormAnswers[f.key]; }
+      else if (v.startsWith('day-')) { currentFormAnswers[f.key] = { mode: 'day', day: +v.slice(4) }; }
+      else { currentFormAnswers[f.key] = { mode: v }; }
+      renderFields(currentFormType);
+    };
+    wrap.appendChild(select);
 
   } else if (f.type === 'symptoms') {
     const cur = currentFormAnswers[f.key] || {};
