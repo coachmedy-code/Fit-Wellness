@@ -309,6 +309,7 @@ let currentUser = null;
 let currentProfile = null;
 let currentFormType = null;
 let currentFormAnswers = {};
+let recentSubmissions = [];
 
 function getTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -422,6 +423,7 @@ async function loadHome() {
     .order('entry_date', { ascending: true });
 
   const all = rows || [];
+  recentSubmissions = all;
   const todayWellness = all.find(r => r.form_type === 'wellness' && r.entry_date === today);
   const todayRpe = all.find(r => r.form_type === 'rpe' && r.entry_date === today);
 
@@ -662,6 +664,24 @@ function renderField(f) {
     };
     wrap.appendChild(select);
 
+    // nápověda: poslední zadaný den cyklu, ať si to nemusíš pamatovat
+    const formDateStr = document.getElementById('form-date').value || todayStr();
+    const lastCycleEntry = recentSubmissions
+      .filter(s => s.form_type === 'wellness' && s.entry_date < formDateStr && s.answers?.cycle_day?.mode === 'day')
+      .sort((a, b) => b.entry_date.localeCompare(a.entry_date))[0];
+
+    if (lastCycleEntry && !cur.mode) {
+      const lastDate = new Date(lastCycleEntry.entry_date + 'T00:00:00');
+      const formDate = new Date(formDateStr + 'T00:00:00');
+      const daysElapsed = Math.round((formDate - lastDate) / 86400000);
+      const suggestedDay = lastCycleEntry.answers.cycle_day.day + daysElapsed;
+      const hint = document.createElement('div');
+      hint.className = 'section-note';
+      hint.style.marginTop = '8px';
+      hint.innerHTML = `Naposledy ${lastDate.toLocaleDateString('cs-CZ')}: den ${lastCycleEntry.answers.cycle_day.day}. Dnes by mohl být <a href="#" style="color:var(--accent);font-weight:700" onclick="event.preventDefault();selectCycleDay(${suggestedDay})">den ${suggestedDay}</a>.`;
+      wrap.appendChild(hint);
+    }
+
   } else if (f.type === 'symptoms') {
     const cur = currentFormAnswers[f.key] || {};
     const box = document.createElement('div');
@@ -694,6 +714,11 @@ function renderField(f) {
   }
 
   return wrap;
+}
+
+function selectCycleDay(day) {
+  currentFormAnswers.cycle_day = { mode: 'day', day: Math.max(1, Math.min(99, day)) };
+  renderFields(currentFormType);
 }
 
 function closeForm() {
