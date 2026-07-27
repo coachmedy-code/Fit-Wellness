@@ -286,8 +286,8 @@ const FORM_DEFS = {
       { key: 'hydration', type: 'hydration', label: 'Barva moči (hydratace) — 1 = světlá, 8 = tmavá' },
       { key: 'injury', type: 'flagselect', label: 'Máš bolest, zranění nebo problém, který by mohl ovlivnit dnešní trénink?' },
       { key: 'illness', type: 'flagselect', label: 'Máš dnes nějaké příznaky nemoci?' },
-      { key: 'cycle_day', type: 'cycle', label: 'Menstruační cyklus — aktuální den' },
-      { key: 'cycle_symptoms', type: 'symptoms', label: 'Menstruační příznaky dnes', conditional: (a) => a.cycle_day && a.cycle_day.mode === 'day' },
+      { key: 'cycle_day', type: 'cycle', label: 'Menstruační cyklus — aktuální den', conditional: () => currentProfile?.gender !== 'male' },
+      { key: 'cycle_symptoms', type: 'symptoms', label: 'Menstruační příznaky dnes', conditional: (a) => currentProfile?.gender !== 'male' && a.cycle_day && a.cycle_day.mode === 'day' },
     ]
   },
   rpe: {
@@ -406,7 +406,7 @@ async function savePinChange() {
 async function loadHome() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   currentUser = user;
-  const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', user.id).single();
+  const { data: profile } = await supabaseClient.from('profiles').select('full_name, gender').eq('id', user.id).single();
   currentProfile = profile;
   if (profile) localStorage.setItem('wellness_name_' + clientToken, profile.full_name);
 

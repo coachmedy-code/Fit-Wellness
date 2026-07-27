@@ -26,6 +26,9 @@ button{ font-family:inherit; cursor:pointer; }
 .btn{ padding:13px 18px; border:none; border-radius:11px; background:var(--accent); color:#062018; font-size:14px; font-weight:800; }
 .btn.secondary{ background:var(--card-2); color:var(--text); border:1px solid var(--border); }
 .btn.ghost{ background:transparent; color:var(--text-dim); border:1px solid var(--border); }
+.btn.secondary.selected{ background:var(--accent-soft); border-color:var(--accent-dim); color:var(--text); }
+.btn-row{ display:flex; gap:8px; }
+.btn-row .btn{ flex:1; }
 .btn.danger{ background:transparent; color:var(--danger); border:1px solid #4a2323; }
 .btn.small{ padding:8px 12px; font-size:12.5px; }
 input[type=text],input[type=email],input[type=password],input[type=number],input[type=file]{
@@ -226,6 +229,12 @@ tbody tr:hover{ background:var(--card-2); }
     <div id="add-step-form">
       <label class="field-label">Jméno klienta</label>
       <input type="text" id="new-client-name" placeholder="Jan Novák">
+      <label class="field-label">Pohlaví</label>
+      <div class="btn-row">
+        <button type="button" class="btn secondary" id="gender-btn-female" onclick="setNewClientGender('female')">Žena</button>
+        <button type="button" class="btn secondary" id="gender-btn-male" onclick="setNewClientGender('male')">Muž</button>
+      </div>
+      <div class="section-note" style="margin-top:6px">U mužů se automaticky skryje sekce o menstruačním cyklu.</div>
       <button class="btn" style="width:100%;margin-top:16px" onclick="createClient()">Vytvořit</button>
       <button class="btn ghost" style="width:100%;margin-top:8px" onclick="closeAddClient()">Zrušit</button>
       <div id="add-msg"></div>
@@ -476,11 +485,20 @@ function renderClientList() {
 function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // ---------------- ADD CLIENT ----------------
+let newClientGender = null;
+
+function setNewClientGender(g) {
+  newClientGender = g;
+  document.getElementById('gender-btn-female').classList.toggle('selected', g === 'female');
+  document.getElementById('gender-btn-male').classList.toggle('selected', g === 'male');
+}
+
 function openAddClient() {
   document.getElementById('modal-add').classList.remove('hidden');
   document.getElementById('add-step-form').classList.remove('hidden');
   document.getElementById('add-step-result').classList.add('hidden');
   document.getElementById('new-client-name').value = '';
+  setNewClientGender(null);
 }
 function closeAddClient() {
   document.getElementById('modal-add').classList.add('hidden');
@@ -490,6 +508,7 @@ function closeAddClient() {
 async function createClient() {
   const name = document.getElementById('new-client-name').value.trim();
   if (!name) { showMsg('add-msg', 'Zadej jméno klienta.', false); return; }
+  if (!newClientGender) { showMsg('add-msg', 'Vyber pohlaví klienta.', false); return; }
 
   const token = genToken();
   const pin = genPin();
@@ -497,12 +516,12 @@ async function createClient() {
 
   const { data, error } = await adminAuthClient.auth.signUp({
     email, password: pin,
-    options: { data: { full_name: name, role: 'client', url_token: token } }
+    options: { data: { full_name: name, role: 'client', url_token: token, gender: newClientGender } }
   });
   if (error) { showMsg('add-msg', error.message, false); return; }
 
   await adminAuthClient.from('profiles').upsert({
-    id: data.user.id, full_name: name, role: 'client', url_token: token, active: true
+    id: data.user.id, full_name: name, role: 'client', url_token: token, active: true, gender: newClientGender
   });
   await adminAuthClient.auth.signOut();
 
