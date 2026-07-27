@@ -127,6 +127,7 @@ tbody tr:hover{ background:var(--card-2); }
   <div class="topbar">
     <h1>Přehled klientů</h1>
     <div style="display:flex;gap:8px">
+      <button class="btn secondary small" onclick="refreshDashboard()" id="refresh-btn">↻ Aktualizovat</button>
       <button class="btn secondary small" onclick="exportAllCsv()">Export CSV</button>
       <button class="btn secondary small" onclick="toggleImport()">Import CSV</button>
       <button class="btn small" onclick="openAddClient()">+ Přidat klienta</button>
@@ -177,6 +178,7 @@ tbody tr:hover{ background:var(--card-2); }
       </div>
     </div>
     <div style="display:flex;gap:8px">
+      <button class="btn secondary small no-print" onclick="openClient(currentClientId)">↻ Aktualizovat</button>
       <button class="btn secondary small" onclick="exportClientCsv()">Export CSV</button>
       <button class="btn secondary small" onclick="window.print()">Tisk reportu</button>
       <button class="btn ghost small" onclick="backToList()">← Zpět</button>
@@ -410,6 +412,13 @@ function showMsg(id, text, ok) {
 }
 
 // ---------------- DASHBOARD ----------------
+async function refreshDashboard() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.textContent = '↻ Aktualizuji…'; btn.disabled = true; }
+  await loadDashboard();
+  if (btn) { btn.textContent = '↻ Aktualizovat'; btn.disabled = false; }
+}
+
 async function loadDashboard() {
   showScreen('screen-dashboard');
   const { data: clients } = await supabaseClient.from('profiles').select('*').eq('role', 'client').order('full_name');
