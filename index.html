@@ -149,7 +149,10 @@ canvas{ max-height:180px; }
       <div class="who">Wellness monitoring</div>
       <h1 id="home-name">Ahoj</h1>
     </div>
-    <button class="icon-btn" onclick="logout()">Odhlásit</button>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" onclick="openPinSettings()">Změnit PIN</button>
+      <button class="icon-btn" onclick="logout()">Odhlásit</button>
+    </div>
   </div>
 
   <div class="kpi-grid">
@@ -205,6 +208,26 @@ canvas{ max-height:180px; }
     <div id="form-fields"></div>
     <div id="form-msg"></div>
     <button class="btn" style="margin-top:20px" onclick="saveCurrentForm()">Uložit záznam</button>
+  </div>
+</div>
+
+<!-- SETTINGS / ZMĚNA PIN -->
+<div id="screen-settings" class="wrap hidden">
+  <div class="topbar">
+    <div>
+      <div class="who">Nastavení</div>
+      <h1>Změnit PIN</h1>
+    </div>
+    <button class="icon-btn" onclick="closeForm()">Zpět</button>
+  </div>
+
+  <div class="card">
+    <label class="field-label">Nový PIN (6 číslic)</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="new-pin-1" class="pin-input">
+    <label class="field-label">Nový PIN znovu</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="new-pin-2" class="pin-input">
+    <button class="btn" style="margin-top:20px" onclick="savePinChange()">Uložit nový PIN</button>
+    <div id="pin-settings-msg"></div>
   </div>
 </div>
 
@@ -342,9 +365,32 @@ function showMsg(elId, text, ok) {
 }
 
 function showScreen(id) {
-  ['screen-pin','screen-invalid','screen-home','screen-form'].forEach(s => {
+  ['screen-pin','screen-invalid','screen-home','screen-form','screen-settings'].forEach(s => {
     document.getElementById(s).classList.toggle('hidden', s !== id);
   });
+}
+
+function openPinSettings() {
+  document.getElementById('new-pin-1').value = '';
+  document.getElementById('new-pin-2').value = '';
+  showScreen('screen-settings');
+}
+
+async function savePinChange() {
+  const pin1 = document.getElementById('new-pin-1').value.trim();
+  const pin2 = document.getElementById('new-pin-2').value.trim();
+  if (!/^\d{6}$/.test(pin1)) {
+    showMsg('pin-settings-msg', 'PIN musí mít přesně 6 číslic.', false);
+    return;
+  }
+  if (pin1 !== pin2) {
+    showMsg('pin-settings-msg', 'PINy se neshodují.', false);
+    return;
+  }
+  const { error } = await supabaseClient.auth.updateUser({ password: pin1 });
+  if (error) { showMsg('pin-settings-msg', error.message, false); return; }
+  showMsg('pin-settings-msg', 'PIN změněn!', true);
+  setTimeout(() => loadHome(), 800);
 }
 
 // ---------------------------------------------------------------
