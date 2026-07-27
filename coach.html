@@ -291,7 +291,8 @@ async function logout() {
 async function forgotPassword() {
   const email = document.getElementById('login-email').value.trim();
   if (!email) { showMsg('login-msg', 'Nejdřív vyplň svůj email nahoře, pak klikni na odkaz znovu.', false); return; }
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) { showMsg('login-msg', error.message, false); return; }
   showMsg('login-msg', 'Poslali jsme ti odkaz na reset hesla na email.', true);
 }
