@@ -703,6 +703,12 @@ async function importCsv() {
 
 // ---------------- INIT ----------------
 (async () => {
+  // odkaz z emailu na reset hesla obsahuje "type=recovery" - v tom případě
+  // appku nepustíme rovnou dovnitř, ale necháme uživatele nastavit nové heslo
+  if (window.location.hash.includes('type=recovery')) {
+    showScreen('screen-reset');
+    return;
+  }
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
