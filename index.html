@@ -648,9 +648,9 @@ function renderField(f) {
     select.className = 'select-native';
     const currentValue = cur.mode === 'day' ? `day-${cur.day}` : (cur.mode || '');
     let optionsHtml = '<option value="">Vyberte jeden</option>';
-    for (let d = 1; d <= 15; d++) optionsHtml += `<option value="day-${d}">${d}</option>`;
-    optionsHtml += '<option value="unsure">Nejsem si jistá/á</option>';
     optionsHtml += '<option value="na">Nevztahuje se</option>';
+    optionsHtml += '<option value="decline">Nechci odpovědět</option>';
+    for (let d = 1; d <= 99; d++) optionsHtml += `<option value="day-${d}">${d}</option>`;
     select.innerHTML = optionsHtml;
     select.value = currentValue;
     select.onchange = () => {

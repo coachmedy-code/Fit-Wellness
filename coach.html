@@ -310,7 +310,8 @@ function openEntryDetail(subId) {
 
     if (a.cycle_day?.mode) {
       html += '<div class="detail-group">Menstruační cyklus</div>';
-      const modeLabel = a.cycle_day.mode === 'day' ? `den ${a.cycle_day.day ?? '?'}` : (a.cycle_day.mode === 'unsure' ? 'nejsem si jistá' : 'nevztahuje se');
+      const cycleModeLabels = { unsure: 'nejsem si jistá', na: 'nevztahuje se', decline: 'nechci odpovědět' };
+      const modeLabel = a.cycle_day.mode === 'day' ? `den ${a.cycle_day.day ?? '?'}` : (cycleModeLabels[a.cycle_day.mode] || a.cycle_day.mode);
       html += detailRow('Den cyklu', modeLabel);
       if (a.cycle_symptoms) {
         Object.entries(a.cycle_symptoms).forEach(([key, sev]) => {
