@@ -73,6 +73,14 @@ tr:last-child td{ border-bottom:none; }
 .tab-btn.active{ background:var(--accent); color:#062018; border-color:var(--accent); }
 .field-label{ display:block; font-size:13px; color:var(--text-dim); margin:14px 0 6px; font-weight:600;}
 .section-note{ font-size:12px; color:var(--text-faint); line-height:1.4; }
+.detail-row{ display:flex; justify-content:space-between; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); }
+.detail-row:last-child{ border-bottom:none; }
+.detail-row .dl{ font-size:12.5px; color:var(--text-dim); flex:1; }
+.detail-row .dv{ font-size:13px; font-weight:700; color:var(--text); text-align:right; max-width:55%; }
+.detail-group{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin:16px 0 4px; }
+.detail-group:first-child{ margin-top:0; }
+tbody tr{ cursor:pointer; }
+tbody tr:hover{ background:var(--card-2); }
 @media print {
   .no-print{ display:none !important; }
   body{ background:#fff; color:#000; }
@@ -168,7 +176,7 @@ tr:last-child td{ border-bottom:none; }
     <h2>Přihlašovací údaje</h2>
     <div class="section-note">Osobní odkaz klienta:</div>
     <div class="link-box" id="detail-link"></div>
-    <div class="section-note" style="margin-top:10px">Zapomenutý PIN? V Supabase → Authentication → Users najdi tento technický email a nastav mu nové heslo (=nový PIN), pak ho pošli klientovi:</div>
+    <div class="section-note" style="margin-top:10px">Zapomenutý PIN? V Supabase → SQL Editor spusť: <code>update auth.users set encrypted_password = crypt('novy_pin', gen_salt('bf')) where email = '...';</code> (viz README) a nový PIN pošli klientovi:</div>
     <div class="link-box" id="detail-email"></div>
   </div>
 
@@ -235,6 +243,17 @@ tr:last-child td{ border-bottom:none; }
   </div>
 </div>
 
+<!-- ENTRY DETAIL MODAL -->
+<div id="modal-entry" class="modal-overlay hidden" onclick="if(event.target===this) closeEntryDetail()">
+  <div class="modal" style="max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0" id="entry-detail-title">Detail záznamu</h2>
+      <button class="btn ghost small" onclick="closeEntryDetail()">Zavřít</button>
+    </div>
+    <div id="entry-detail-body"></div>
+  </div>
+</div>
+
 <script>
 const adminAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
@@ -243,6 +262,77 @@ const adminAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 function deriveEmail(token) { return `client-${token}@wellness.internal`; }
 function genToken() { return Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,10); }
 function genPin() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+// ---------------- popisky otázek (pro detail záznamu) ----------------
+const SCALE5_LABELS = {
+  sleep_quality: ['Velmi špatný','Špatný','Neutrální','Dobrý','Velmi dobrý'],
+  recovery: ['Velmi nezotavena','Nezotavena','Neutrální','Zotavena','Velmi dobře zotavena'],
+  physical_fatigue: ['Velmi unavený/á','Unavený/á','Neutrální','Čerstvý/á','Velmi čerstvé'],
+  mental_fatigue: ['Velmi unavený/á','Unavený/á','Neutrální','Energický/á','Velmi energický/á'],
+  muscle_soreness: ['Velmi vysoká bolest','Vysoká bolest','Mírná bolest','Nízká bolest','Žádná bolest'],
+};
+const SCALE5_TITLES = {
+  sleep_quality: 'Kvalita spánku', recovery: 'Zotavení', physical_fatigue: 'Fyzická únava',
+  mental_fatigue: 'Duševní únava', muscle_soreness: 'Bolest svalů',
+};
+const FLAG_LABELS = { none:'Žádný', full:'Ano, ale může trénovat naplno', support:'Ano, potřebuje podporu/úpravy', discuss:'Ano, chce se domluvit', other:'Ostatní' };
+const SEVERITY = ['Žádný příznak','Mírné','Střední','Těžké','Raději neříkám'];
+const SYMPTOM_LABELS = { menstrual_pain:'Menstruační bolest', bloating:'Nadýmání', lower_back_pain:'Bolest dolní části zad', sleep_disruption:'Narušený spánek', mood_changes:'Změny nálad', appetite_changes:'Změny chuti k jídlu' };
+const RPE_LABELS = { 0:'Žádná námaha',1:'Velmi lehká',2:'Velmi lehká',3:'Lehká',4:'Lehká',5:'Střední',6:'Střední',7:'Těžká',8:'Těžká',9:'Velmi těžká',10:'Maximální úsilí' };
+
+function detailRow(label, value) {
+  if (value === null || value === undefined || value === '') return '';
+  return `<div class="detail-row"><div class="dl">${label}</div><div class="dv">${value}</div></div>`;
+}
+
+function openEntryDetail(subId) {
+  const sub = currentClientSubs.find(s => s.id === subId);
+  if (!sub) return;
+  const a = sub.answers || {};
+  const dateFmt = new Date(sub.entry_date + 'T00:00:00').toLocaleDateString('cs-CZ');
+  document.getElementById('entry-detail-title').textContent = (sub.form_type === 'wellness' ? 'Wellness — ' : 'RPE — ') + dateFmt;
+
+  let html = '';
+  if (sub.form_type === 'wellness') {
+    html += '<div class="detail-group">Spánek</div>';
+    html += detailRow('Usnutí', a.sleep_bedtime);
+    html += detailRow('Probuzení', a.sleep_wake);
+    ['sleep_quality','recovery','physical_fatigue','mental_fatigue','muscle_soreness'].forEach(k => {
+      if (a[k] != null) html += detailRow(SCALE5_TITLES[k], `${a[k]}/5 — ${SCALE5_LABELS[k][a[k]-1]}`);
+    });
+    const rd = computeReadiness(a);
+    if (rd != null) html += detailRow('Readiness', rd.toFixed(1) + ' / 10');
+
+    html += '<div class="detail-group">Hydratace a zdraví</div>';
+    if (a.hydration != null) html += detailRow('Hydratace (moč)', a.hydration + ' / 8');
+    if (a.injury?.value) html += detailRow('Zranění', FLAG_LABELS[a.injury.value] + (a.injury.note ? ' — ' + a.injury.note : ''));
+    if (a.illness?.value) html += detailRow('Nemoc', FLAG_LABELS[a.illness.value] + (a.illness.note ? ' — ' + a.illness.note : ''));
+
+    if (a.cycle_day?.mode) {
+      html += '<div class="detail-group">Menstruační cyklus</div>';
+      const modeLabel = a.cycle_day.mode === 'day' ? `den ${a.cycle_day.day ?? '?'}` : (a.cycle_day.mode === 'unsure' ? 'nejsem si jistá' : 'nevztahuje se');
+      html += detailRow('Den cyklu', modeLabel);
+      if (a.cycle_symptoms) {
+        Object.entries(a.cycle_symptoms).forEach(([key, sev]) => {
+          html += detailRow(SYMPTOM_LABELS[key] || key, SEVERITY[sev]);
+        });
+      }
+    }
+  } else if (sub.form_type === 'rpe') {
+    html += '<div class="detail-group">Trénink</div>';
+    if (a.rpe != null) html += detailRow('RPE', `${a.rpe}/10 — ${RPE_LABELS[a.rpe]}`);
+    if (a.duration_min != null) html += detailRow('Délka tréninku', a.duration_min + ' min');
+    if (a.rpe != null && a.duration_min != null) html += detailRow('Zátěž (RPE × min)', a.rpe * a.duration_min);
+    if (a.session_note) html += detailRow('Poznámka', a.session_note);
+  }
+
+  document.getElementById('entry-detail-body').innerHTML = html || '<div class="section-note">Žádné odpovědi.</div>';
+  document.getElementById('modal-entry').classList.remove('hidden');
+}
+
+function closeEntryDetail() {
+  document.getElementById('modal-entry').classList.add('hidden');
+}
 
 let allClients = [];
 let allSubmissions = [];
@@ -523,6 +613,7 @@ function sortTable(key) {
 
 function renderDetailTable() {
   let rows = currentClientSubs.map(s => ({
+    id: s.id,
     entry_date: s.entry_date,
     form_type: s.form_type,
     readiness: s.form_type === 'wellness' ? computeReadiness(s.answers) : null,
@@ -539,7 +630,7 @@ function renderDetailTable() {
   });
 
   document.getElementById('detail-tbody').innerHTML = rows.map(r => `
-    <tr>
+    <tr onclick="openEntryDetail(${r.id})">
       <td>${new Date(r.entry_date+'T00:00:00').toLocaleDateString('cs-CZ')}</td>
       <td>${r.form_type === 'wellness' ? 'Wellness' : 'RPE'}</td>
       <td>${r.readiness != null ? r.readiness.toFixed(1) : '–'}</td>
