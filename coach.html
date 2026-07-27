@@ -166,7 +166,15 @@ tbody tr:hover{ background:var(--card-2); }
   <div class="topbar no-print">
     <div>
       <div class="section-note" style="text-transform:uppercase;font-weight:700;letter-spacing:.05em">Detail klienta</div>
-      <h1 id="detail-name">—</h1>
+      <div id="detail-name-view" style="display:flex;align-items:center;gap:10px">
+        <h1 id="detail-name">—</h1>
+        <button class="icon-btn no-print" style="padding:5px 10px;font-size:12px" onclick="openEditName()">✏️ Upravit</button>
+      </div>
+      <div id="detail-name-edit" class="hidden no-print" style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <input type="text" id="edit-name-input" style="max-width:240px">
+        <button class="btn small" style="width:auto" onclick="saveEditName()">Uložit</button>
+        <button class="btn ghost small" style="width:auto" onclick="closeEditName()">Zrušit</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn secondary small" onclick="exportClientCsv()">Export CSV</button>
@@ -619,6 +627,26 @@ function renderDetailCharts() {
 }
 
 function backToList() { loadDashboard(); showScreen('screen-dashboard'); }
+
+function openEditName() {
+  document.getElementById('edit-name-input').value = document.getElementById('detail-name').textContent;
+  document.getElementById('detail-name-view').classList.add('hidden');
+  document.getElementById('detail-name-edit').classList.remove('hidden');
+}
+function closeEditName() {
+  document.getElementById('detail-name-edit').classList.add('hidden');
+  document.getElementById('detail-name-view').classList.remove('hidden');
+}
+async function saveEditName() {
+  const newName = document.getElementById('edit-name-input').value.trim();
+  if (!newName) return;
+  const { error } = await supabaseClient.from('profiles').update({ full_name: newName }).eq('id', currentClientId);
+  if (error) { alert(error.message); return; }
+  document.getElementById('detail-name').textContent = newName;
+  const client = allClients.find(c => c.id === currentClientId);
+  if (client) client.full_name = newName;
+  closeEditName();
+}
 
 function setTableFilter(t) {
   currentTableFilter = t;
