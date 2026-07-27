@@ -92,6 +92,9 @@ tr:last-child td{ border-bottom:none; }
     <label class="field-label">Heslo</label>
     <input type="password" id="login-password">
     <button class="btn" style="width:100%;margin-top:16px" onclick="login()">Přihlásit se</button>
+    <div style="text-align:center;margin-top:12px">
+      <a href="#" style="font-size:12.5px;color:var(--text-dim)" onclick="forgotPassword();return false;">Zapomenuté heslo?</a>
+    </div>
     <div id="login-msg"></div>
   </div>
 </div>
@@ -147,6 +150,14 @@ tr:last-child td{ border-bottom:none; }
       <button class="btn secondary small" onclick="window.print()">Tisk reportu</button>
       <button class="btn ghost small" onclick="backToList()">← Zpět</button>
     </div>
+  </div>
+
+  <div class="card no-print" id="login-info-card">
+    <h2>Přihlašovací údaje</h2>
+    <div class="section-note">Osobní odkaz klienta:</div>
+    <div class="link-box" id="detail-link"></div>
+    <div class="section-note" style="margin-top:10px">Zapomenutý PIN? V Supabase → Authentication → Users najdi tento technický email a nastav mu nové heslo (=nový PIN), pak ho pošli klientovi:</div>
+    <div class="link-box" id="detail-email"></div>
   </div>
 
   <div class="kpi-grid">
@@ -250,6 +261,14 @@ async function login() {
 async function logout() {
   await supabaseClient.auth.signOut();
   showScreen('screen-login');
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { showMsg('login-msg', 'Nejdřív vyplň svůj email nahoře, pak klikni na odkaz znovu.', false); return; }
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+  if (error) { showMsg('login-msg', error.message, false); return; }
+  showMsg('login-msg', 'Poslali jsme ti odkaz na reset hesla na email.', true);
 }
 
 function showMsg(id, text, ok) {
@@ -387,6 +406,9 @@ async function openClient(id) {
   currentClientId = id;
   const client = allClients.find(c => c.id === id);
   document.getElementById('detail-name').textContent = client.full_name;
+  const base = window.location.href.replace(/coach\.html.*$/, 'index.html');
+  document.getElementById('detail-link').textContent = client.url_token ? `${base}?c=${client.url_token}` : '(chybí osobní odkaz)';
+  document.getElementById('detail-email').textContent = client.url_token ? deriveEmail(client.url_token) : '—';
   showScreen('screen-detail');
 
   const since = new Date(); since.setDate(since.getDate() - 60);
@@ -501,7 +523,41 @@ function renderDetailTable() {
     </tr>`).join('') || '<tr><td colspan="6" class="section-note">Žádné záznamy.</td></tr>';
 }
 
-// ---------------- CSV EXPORT / IMPORT ----------------
+// ---------------- CSV EXPORT / IMPORT (čitelné sloupce) ----------------
+const CSV_COLUMNS = [
+  'full_name','form_type','entry_date',
+  'sleep_bedtime','sleep_wake','sleep_quality','recovery','physical_fatigue','mental_fatigue','muscle_soreness','readiness',
+  'hydration','injury','injury_note','illness','illness_note',
+  'cycle_mode','cycle_day',
+  'symptom_menstrual_pain','symptom_bloating','symptom_lower_back_pain','symptom_sleep_disruption','symptom_mood_changes','symptom_appetite_changes',
+  'rpe','duration_min','load','session_note'
+];
+
+function flattenRow(fullName, sub) {
+  const a = sub.answers || {};
+  const cs = a.cycle_symptoms || {};
+  const row = {
+    full_name: fullName, form_type: sub.form_type, entry_date: sub.entry_date,
+    sleep_bedtime: a.sleep_bedtime ?? '', sleep_wake: a.sleep_wake ?? '',
+    sleep_quality: a.sleep_quality ?? '', recovery: a.recovery ?? '',
+    physical_fatigue: a.physical_fatigue ?? '', mental_fatigue: a.mental_fatigue ?? '',
+    muscle_soreness: a.muscle_soreness ?? '',
+    readiness: sub.form_type === 'wellness' ? (computeReadiness(a) ?? '') : '',
+    hydration: a.hydration ?? '',
+    injury: a.injury?.value ?? '', injury_note: a.injury?.note ?? '',
+    illness: a.illness?.value ?? '', illness_note: a.illness?.note ?? '',
+    cycle_mode: a.cycle_day?.mode ?? '',
+    cycle_day: a.cycle_day?.mode === 'day' ? (a.cycle_day.day ?? '') : '',
+    symptom_menstrual_pain: cs.menstrual_pain ?? '', symptom_bloating: cs.bloating ?? '',
+    symptom_lower_back_pain: cs.lower_back_pain ?? '', symptom_sleep_disruption: cs.sleep_disruption ?? '',
+    symptom_mood_changes: cs.mood_changes ?? '', symptom_appetite_changes: cs.appetite_changes ?? '',
+    rpe: a.rpe ?? '', duration_min: a.duration_min ?? '',
+    load: sub.form_type === 'rpe' ? ((+a.rpe||0) * (+a.duration_min||0)) : '',
+    session_note: a.session_note ?? '',
+  };
+  return CSV_COLUMNS.map(c => row[c]);
+}
+
 function toCsvValue(v) {
   const s = (v === null || v === undefined) ? '' : String(v);
   return '"' + s.replace(/"/g, '""') + '"';
@@ -518,16 +574,16 @@ function downloadCsv(filename, rows) {
 
 function exportClientCsv() {
   const client = allClients.find(c => c.id === currentClientId);
-  const rows = [['full_name','form_type','entry_date','answers_json']];
-  currentClientSubs.forEach(s => rows.push([client.full_name, s.form_type, s.entry_date, JSON.stringify(s.answers)]));
+  const rows = [CSV_COLUMNS];
+  currentClientSubs.forEach(s => rows.push(flattenRow(client.full_name, s)));
   downloadCsv(`${client.full_name.replace(/\s+/g,'_')}_export.csv`, rows);
 }
 
 function exportAllCsv() {
-  const rows = [['full_name','form_type','entry_date','answers_json']];
+  const rows = [CSV_COLUMNS];
   allSubmissions.forEach(s => {
     const c = allClients.find(cl => cl.id === s.client_id);
-    rows.push([c ? c.full_name : s.client_id, s.form_type, s.entry_date, JSON.stringify(s.answers)]);
+    rows.push(flattenRow(c ? c.full_name : s.client_id, s));
   });
   downloadCsv('wellness_export_all.csv', rows);
 }
@@ -554,30 +610,64 @@ function parseCsv(text) {
   return rows.filter(r => r.length > 1 || r[0] !== '');
 }
 
+function unflattenRow(get) {
+  const formType = get('form_type').trim();
+  const answers = {};
+  const numOrUndef = (v) => v === '' ? undefined : +v;
+
+  if (formType === 'wellness') {
+    if (get('sleep_bedtime')) answers.sleep_bedtime = get('sleep_bedtime');
+    if (get('sleep_wake')) answers.sleep_wake = get('sleep_wake');
+    ['sleep_quality','recovery','physical_fatigue','mental_fatigue','muscle_soreness','hydration'].forEach(k => {
+      const v = numOrUndef(get(k)); if (v !== undefined) answers[k] = v;
+    });
+    const injVal = get('injury'); if (injVal) answers.injury = { value: injVal, note: get('injury_note') };
+    const illVal = get('illness'); if (illVal) answers.illness = { value: illVal, note: get('illness_note') };
+    const cycleMode = get('cycle_mode');
+    if (cycleMode) {
+      answers.cycle_day = cycleMode === 'day' ? { mode: 'day', day: numOrUndef(get('cycle_day')) ?? null } : { mode: cycleMode };
+    }
+    const symptomCols = {
+      symptom_menstrual_pain: 'menstrual_pain', symptom_bloating: 'bloating',
+      symptom_lower_back_pain: 'lower_back_pain', symptom_sleep_disruption: 'sleep_disruption',
+      symptom_mood_changes: 'mood_changes', symptom_appetite_changes: 'appetite_changes'
+    };
+    let hasSymptoms = false; const symptoms = {};
+    Object.entries(symptomCols).forEach(([col, key]) => {
+      const v = numOrUndef(get(col)); if (v !== undefined) { symptoms[key] = v; hasSymptoms = true; }
+    });
+    if (hasSymptoms) answers.cycle_symptoms = symptoms;
+  } else if (formType === 'rpe') {
+    const rpeV = numOrUndef(get('rpe')); if (rpeV !== undefined) answers.rpe = rpeV;
+    const dur = numOrUndef(get('duration_min')); if (dur !== undefined) answers.duration_min = dur;
+    const note = get('session_note'); if (note) answers.session_note = note;
+  }
+  return { form_type: formType, entry_date: get('entry_date').trim(), answers };
+}
+
 async function importCsv() {
   const fileInput = document.getElementById('import-file');
   if (!fileInput.files.length) { showMsg('import-msg', 'Vyber CSV soubor.', false); return; }
   const text = await fileInput.files[0].text();
   const rows = parseCsv(text);
   const header = rows[0].map(h => h.trim().toLowerCase());
-  const iName = header.indexOf('full_name'), iType = header.indexOf('form_type'),
-        iDate = header.indexOf('entry_date'), iAns = header.indexOf('answers_json');
+  const idx = {}; header.forEach((h, i) => idx[h] = i);
 
-  if (iName < 0 || iType < 0 || iDate < 0 || iAns < 0) {
-    showMsg('import-msg', 'CSV musí mít sloupce: full_name, form_type, entry_date, answers_json', false);
+  if (idx['full_name'] === undefined || idx['form_type'] === undefined || idx['entry_date'] === undefined) {
+    showMsg('import-msg', 'CSV musí mít alespoň sloupce: full_name, form_type, entry_date (+ sloupce s odpověďmi).', false);
     return;
   }
 
   let ok = 0, fail = 0;
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    if (!row[iName]) continue;
-    const client = allClients.find(c => c.full_name.trim().toLowerCase() === row[iName].trim().toLowerCase());
+    const get = (col) => { const i = idx[col]; return (i !== undefined && row[i] !== undefined) ? row[i] : ''; };
+    if (!get('full_name')) continue;
+    const client = allClients.find(c => c.full_name.trim().toLowerCase() === get('full_name').trim().toLowerCase());
     if (!client) { fail++; continue; }
-    let answers;
-    try { answers = JSON.parse(row[iAns]); } catch(e) { fail++; continue; }
+    const { form_type, entry_date, answers } = unflattenRow(get);
     const { error } = await supabaseClient.from('submissions').upsert({
-      client_id: client.id, form_type: row[iType].trim(), entry_date: row[iDate].trim(), answers
+      client_id: client.id, form_type, entry_date, answers
     }, { onConflict: 'client_id,form_type,entry_date' });
     if (error) fail++; else ok++;
   }

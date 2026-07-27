@@ -228,7 +228,14 @@ const FLAG_OPTIONS = [
   { value: 'other', label: 'Ostatní' },
 ];
 
-const SYMPTOMS = ['Menstruační bolest', 'Nadýmání', 'Bolest dolní části zad', 'Narušený spánek', 'Změny nálad', 'Změny chuti k jídlu'];
+const SYMPTOMS = [
+  { key: 'menstrual_pain', label: 'Menstruační bolest' },
+  { key: 'bloating', label: 'Nadýmání' },
+  { key: 'lower_back_pain', label: 'Bolest dolní části zad' },
+  { key: 'sleep_disruption', label: 'Narušený spánek' },
+  { key: 'mood_changes', label: 'Změny nálad' },
+  { key: 'appetite_changes', label: 'Změny chuti k jídlu' },
+];
 const SEVERITY = ['Žádný příznak', 'Mírné', 'Střední', 'Těžké', 'Raději neříkám'];
 
 const HYDRATION_COLORS = ['#fdf8e1','#fbf0c4','#f9e39a','#f6d565','#f2c530','#eab410','#d99a0a','#b8790a'];
@@ -608,17 +615,17 @@ function renderField(f) {
     const box = document.createElement('div');
     SYMPTOMS.forEach(sym => {
       const row = document.createElement('div'); row.className = 'symptom';
-      const name = document.createElement('div'); name.className = 'name'; name.textContent = sym;
+      const name = document.createElement('div'); name.className = 'name'; name.textContent = sym.label;
       row.appendChild(name);
       const sevRow = document.createElement('div'); sevRow.className = 'sev-row';
       SEVERITY.forEach((sLabel, si) => {
         const d = document.createElement('div');
-        d.className = 'sev-dot' + (cur[sym] === si ? ' sel' : '');
+        d.className = 'sev-dot' + (cur[sym.key] === si ? ' sel' : '');
         d.textContent = si;
         d.title = sLabel;
         d.onclick = () => {
           if (!currentFormAnswers[f.key]) currentFormAnswers[f.key] = {};
-          currentFormAnswers[f.key][sym] = si;
+          currentFormAnswers[f.key][sym.key] = si;
           renderFields(currentFormType);
         };
         sevRow.appendChild(d);
