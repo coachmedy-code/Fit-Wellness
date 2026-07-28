@@ -673,6 +673,7 @@ function renderDetailTable() {
     id: s.id,
     entry_date: s.entry_date,
     form_type: s.form_type,
+    session_seq: s.session_seq || 0,
     readiness: s.form_type === 'wellness' ? computeReadiness(s.answers) : null,
     rpe: s.form_type === 'rpe' ? s.answers.rpe : null,
     load: s.form_type === 'rpe' ? (+s.answers.rpe||0)*(+s.answers.duration_min||0) : null,
@@ -689,7 +690,7 @@ function renderDetailTable() {
   document.getElementById('detail-tbody').innerHTML = rows.map(r => `
     <tr onclick="openEntryDetail(${r.id})">
       <td>${new Date(r.entry_date+'T00:00:00').toLocaleDateString('cs-CZ')}</td>
-      <td>${r.form_type === 'wellness' ? 'Wellness' : 'RPE'}</td>
+      <td>${r.form_type === 'wellness' ? 'Wellness' : 'RPE' + (r.session_seq ? ' #' + (r.session_seq+1) : '')}</td>
       <td>${r.readiness != null ? r.readiness.toFixed(1) : '–'}</td>
       <td>${r.rpe ?? '–'}</td>
       <td>${r.load ?? '–'}</td>
@@ -699,7 +700,7 @@ function renderDetailTable() {
 
 // ---------------- CSV EXPORT / IMPORT (čitelné sloupce) ----------------
 const CSV_COLUMNS = [
-  'full_name','form_type','entry_date',
+  'full_name','form_type','entry_date','session_seq',
   'sleep_bedtime','sleep_wake','sleep_quality','recovery','physical_fatigue','mental_fatigue','muscle_soreness','readiness',
   'hydration','injury','injury_note','illness','illness_note',
   'cycle_mode','cycle_day',
@@ -711,7 +712,7 @@ function flattenRow(fullName, sub) {
   const a = sub.answers || {};
   const cs = a.cycle_symptoms || {};
   const row = {
-    full_name: fullName, form_type: sub.form_type, entry_date: sub.entry_date,
+    full_name: fullName, form_type: sub.form_type, entry_date: sub.entry_date, session_seq: sub.session_seq ?? 0,
     sleep_bedtime: a.sleep_bedtime ?? '', sleep_wake: a.sleep_wake ?? '',
     sleep_quality: a.sleep_quality ?? '', recovery: a.recovery ?? '',
     physical_fatigue: a.physical_fatigue ?? '', mental_fatigue: a.mental_fatigue ?? '',
@@ -816,7 +817,9 @@ function unflattenRow(get) {
     const dur = numOrUndef(get('duration_min')); if (dur !== undefined) answers.duration_min = dur;
     const note = get('session_note'); if (note) answers.session_note = note;
   }
-  return { form_type: formType, entry_date: get('entry_date').trim(), answers };
+  const seqRaw = get('session_seq').trim();
+  const session_seq = seqRaw === '' ? 0 : (+seqRaw || 0);
+  return { form_type: formType, entry_date: get('entry_date').trim(), session_seq, answers };
 }
 
 async function importCsv() {
@@ -839,10 +842,10 @@ async function importCsv() {
     if (!get('full_name')) continue;
     const client = allClients.find(c => c.full_name.trim().toLowerCase() === get('full_name').trim().toLowerCase());
     if (!client) { fail++; continue; }
-    const { form_type, entry_date, answers } = unflattenRow(get);
+    const { form_type, entry_date, session_seq, answers } = unflattenRow(get);
     const { error } = await supabaseClient.from('submissions').upsert({
-      client_id: client.id, form_type, entry_date, answers
-    }, { onConflict: 'client_id,form_type,entry_date' });
+      client_id: client.id, form_type, entry_date, session_seq, answers
+    }, { onConflict: 'client_id,form_type,entry_date,session_seq' });
     if (error) fail++; else ok++;
   }
   showMsg('import-msg', `Hotovo: ${ok} importováno, ${fail} přeskočeno.`, fail === 0);

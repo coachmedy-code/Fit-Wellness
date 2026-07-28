@@ -310,6 +310,8 @@ let currentProfile = null;
 let currentFormType = null;
 let currentFormAnswers = {};
 let recentSubmissions = [];
+let currentEditingId = null;
+let currentSessionSeq = 0;
 
 function getTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -430,7 +432,7 @@ async function loadHome() {
   document.getElementById('action-wellness').classList.toggle('done', !!todayWellness);
   document.getElementById('action-wellness-sub').textContent = todayWellness ? 'upravit dnešní' : 'vyplnit dnes';
   document.getElementById('action-rpe').classList.toggle('done', !!todayRpe);
-  document.getElementById('action-rpe-sub').textContent = todayRpe ? 'upravit dnešní' : 'zadat RPE';
+  document.getElementById('action-rpe-sub').textContent = todayRpe ? 'přidat další trénink' : 'zadat RPE';
 
   if (todayWellness) {
     const r = computeReadiness(todayWellness.answers);
@@ -499,13 +501,13 @@ function renderHistory(all) {
     const dateFmt = new Date(r.entry_date + 'T00:00:00').toLocaleDateString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric' });
     if (r.form_type === 'wellness') {
       const rd = computeReadiness(r.answers);
-      return `<div class="entry-row" onclick="openForm('wellness','${r.entry_date}')">
+      return `<div class="entry-row" onclick="openForm('wellness','${r.entry_date}',${r.id})">
         <div><div class="date">${dateFmt}</div><div class="type">Wellness</div></div>
         <div style="display:flex;align-items:center;gap:10px"><div class="val">${rd!==null?rd.toFixed(1):'–'}</div><div class="chev">›</div></div>
       </div>`;
     }
-    return `<div class="entry-row" onclick="openForm('rpe','${r.entry_date}')">
-      <div><div class="date">${dateFmt}</div><div class="type">RPE</div></div>
+    return `<div class="entry-row" onclick="openForm('rpe','${r.entry_date}',${r.id})">
+      <div><div class="date">${dateFmt}</div><div class="type">RPE${r.session_seq ? ' #' + (r.session_seq+1) : ''}</div></div>
       <div style="display:flex;align-items:center;gap:10px"><div class="val">${r.answers.rpe ?? '–'}</div><div class="chev">›</div></div>
     </div>`;
   }).join('') || '<div class="section-note">Zatím žádné záznamy.</div>';
@@ -514,7 +516,7 @@ function renderHistory(all) {
 // ---------------------------------------------------------------
 // DYNAMIC FORM RENDERER
 // ---------------------------------------------------------------
-async function openForm(type, dateStr) {
+async function openForm(type, dateStr, editId) {
   currentFormType = type;
   const def = FORM_DEFS[type];
   document.getElementById('form-title').textContent = def.title;
@@ -522,21 +524,55 @@ async function openForm(type, dateStr) {
   const dateInput = document.getElementById('form-date');
   dateInput.max = todayStr();
   dateInput.value = dateStr || todayStr();
+  // změna data u otevřeného formuláře = hledej/založ záznam pro nové datum (u RPE novou session)
   dateInput.onchange = () => loadAndRenderFields(type, dateInput.value);
 
   showScreen('screen-form');
-  await loadAndRenderFields(type, dateInput.value);
+  await loadAndRenderFields(type, dateInput.value, editId);
 }
 
-async function loadAndRenderFields(type, dateStr) {
-  const { data } = await supabaseClient
-    .from('submissions')
-    .select('answers')
-    .eq('client_id', currentUser.id)
-    .eq('form_type', type)
-    .eq('entry_date', dateStr)
-    .maybeSingle();
-  currentFormAnswers = (data && data.answers) || {};
+async function loadAndRenderFields(type, dateStr, editId) {
+  if (editId) {
+    // editace konkrétního záznamu (otevřeno z historie)
+    const { data } = await supabaseClient
+      .from('submissions')
+      .select('*')
+      .eq('id', editId)
+      .single();
+    currentEditingId = data ? data.id : null;
+    currentSessionSeq = data ? (data.session_seq || 0) : 0;
+    currentFormAnswers = (data && data.answers) || {};
+    renderFields(type);
+    return;
+  }
+
+  if (type === 'wellness') {
+    // wellness je max 1x denně - najdi/edituj dnešní záznam
+    const { data } = await supabaseClient
+      .from('submissions')
+      .select('*')
+      .eq('client_id', currentUser.id)
+      .eq('form_type', 'wellness')
+      .eq('entry_date', dateStr)
+      .maybeSingle();
+    currentEditingId = data ? data.id : null;
+    currentSessionSeq = 0;
+    currentFormAnswers = (data && data.answers) || {};
+  } else {
+    // RPE: může jich být za den víc - vždy založ novou session (další trénink daného dne)
+    const { data } = await supabaseClient
+      .from('submissions')
+      .select('session_seq')
+      .eq('client_id', currentUser.id)
+      .eq('form_type', 'rpe')
+      .eq('entry_date', dateStr)
+      .order('session_seq', { ascending: false })
+      .limit(1);
+    const maxSeq = (data && data.length) ? data[0].session_seq : -1;
+    currentEditingId = null;
+    currentSessionSeq = maxSeq + 1;
+    currentFormAnswers = {};
+  }
   renderFields(type);
 }
 
@@ -733,12 +769,13 @@ async function saveCurrentForm() {
     client_id: currentUser.id,
     form_type: currentFormType,
     entry_date: dateStr,
+    session_seq: currentSessionSeq,
     answers: currentFormAnswers,
   };
 
   const { error } = await supabaseClient
     .from('submissions')
-    .upsert(payload, { onConflict: 'client_id,form_type,entry_date' });
+    .upsert(payload, { onConflict: 'client_id,form_type,entry_date,session_seq' });
 
   if (error) { showMsg('form-msg', error.message, false); return; }
   showMsg('form-msg', 'Uloženo!', true);
